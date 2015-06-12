@@ -70,12 +70,12 @@ Required Arguments:
 
 [2]	Simulation Directory	Directory where simulations can be found
 				Must contain simulation file neutral_simulation.tsv and selection_simulation.tsv
-				These can be found here: https://github.com/hsmith36/SelecT/tree/master/clean_data/sim
+				These can be found here: https://github.com/ridgelab/SelecT/tree/master/clean_data/sim
 
 [3]	Chromosome		Chromosome number where window can be found
 
 [4]	Window Number		Window index number as defined by SelecT evironment setup
-				See SelecT_workspace/envi_files/all_wins for window ranges
+				See any SelecT_workspace/envi_files/all_wins for window ranges
 
 Optional Arguments:
 -inon		Non-absolute iHS	Runs iHS score probabilities where large negative scores ONLY are associated with selection (replicate CMS_local)
