@@ -8,6 +8,7 @@ Created by RidgeLab Group, BYU Bioinformatics
 
 Readme file for understanding input for all phases of SelecT pipeline
 Primary instructions are created for use on a supercomputer. Modifications for individual setup my be necessary.
+This readme is for using .jar executables only. Src code is for reference only.
 
 ________________________________________________________________________________________
 PHASE 1
