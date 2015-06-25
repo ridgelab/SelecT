@@ -36,10 +36,10 @@ public class SignificanceAnalyzer {
 			if((Boolean) arg_map.get("combine_only")) {
 				
 				Combiner c = new Combiner(arg_map, log);
-				if(arg_map.get("combine_filter").equals(".:default:."))
+				if(arg_map.get("combine_fltr").equals(".:default:."))
 					c.combineWindows();
 				else
-					c.combineWindows((String) arg_map.get("combine_filter"));
+					c.combineWindows((String) arg_map.get("combine_fltr"));
 				
 				c.writeStats();
 			}

@@ -120,7 +120,7 @@ public class SNP implements Comparable<SNP>, Serializable {
 	@Override
 	public int compareTo(SNP s) {
 		
-		if(this.equals(s))
+		if(this.sameAs(s))
 			return 0;
 		if(this.pos < s.getPosition())
 			return -1;

@@ -249,7 +249,7 @@ public class Combiner {
 			int end_pos = getEnd(win_file.getName());
 			
 			WindowParser wp = new WindowParser(log, win_file, st_pos, end_pos);
-			WindowStats ws = wp.parseWindow(filter_incomplete_data);//TODO: make this so that ONLY data where all numbers are present are added
+			WindowStats ws = wp.parseWindow(filter_incomplete_data);
 			all_ws.add(ws);
 		}
 	}

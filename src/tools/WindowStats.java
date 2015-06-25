@@ -1,11 +1,12 @@
 package tools;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import calc.HaplotypeTests;
 
@@ -14,23 +15,14 @@ public class WindowStats implements Comparable<WindowStats>{
 	private int st_pos;
 	private int end_pos;
 	
-	private List<SNP> ihs_snps;
-	private List<SNP> xpehh_snps;
-	private List<SNP> ihh_snps;
-	private List<SNP> ddaf_snps;
-	private List<SNP> daf_snps;
-	private List<SNP> fst_snps;
-	//private List<SNP> tajd_snps;
-	//private List<SNP>	new_snps;
-	
-	private List<Double> ihs_stats;
-	private List<Double> xpehh_stats;
-	private List<Double> ihh_stats;
-	private List<Double> ddaf_stats;
-	private List<Double> daf_stats;
-	private List<Double> fst_stats;
-	//private List<Double> tajd_stats;
-	//private List<Double> new_stats;
+	private TreeMap<SNP, Double> ihs;
+	private TreeMap<SNP, Double> xpehh;
+	private TreeMap<SNP, Double> ihh;
+	private TreeMap<SNP, Double> ddaf;
+	private TreeMap<SNP, Double> daf;
+	private TreeMap<SNP, Double> fst;
+	//private TreeMap<SNP, Double> tajd;
+	//private TreeMap<SNP, Double> new;
 	
 	private TreeMap<SNP, Double> win_scores_prod_unstd;
 	private TreeMap<SNP, Double> win_scores_mean_unstd;
@@ -47,23 +39,14 @@ public class WindowStats implements Comparable<WindowStats>{
 		this.st_pos = st_pos;
 		this.end_pos = end_pos;
 		
-		ihs_snps = new ArrayList<SNP>();
-		xpehh_snps = new ArrayList<SNP>();
-		ihh_snps = new ArrayList<SNP>();
-		ddaf_snps = new ArrayList<SNP>();
-		daf_snps = new ArrayList<SNP>();
-		fst_snps = new ArrayList<SNP>();
-		//tajd_snps = new ArrayList<SNP>();
-		//new_snps = new ArrayList<SNP>();
-		
-		ihs_stats = new ArrayList<Double>();
-		xpehh_stats = new ArrayList<Double>();
-		ihh_stats = new ArrayList<Double>();
-		ddaf_stats = new ArrayList<Double>();
-		daf_stats = new ArrayList<Double>();
-		fst_stats = new ArrayList<Double>();
-		//tajd_stats = new ArrayList<Double>();
-		//new_stats = new ArrayList<Double>();
+		ihs = new TreeMap<SNP, Double>();
+		xpehh = new TreeMap<SNP, Double>();
+		ihh = new TreeMap<SNP, Double>();
+		ddaf = new TreeMap<SNP, Double>();
+		daf = new TreeMap<SNP, Double>();
+		fst = new TreeMap<SNP, Double>();
+		//tajd = new TreeMap<SNP, Double>();
+		//new = new TreeMap<SNP, Double>();
 		
 		win_scores_prod_unstd = new TreeMap<SNP, Double>();
 		win_scores_mean_unstd = new TreeMap<SNP, Double>();
@@ -73,19 +56,22 @@ public class WindowStats implements Comparable<WindowStats>{
 	
 	public List<SNP> getAllSNPs() {
 		
+		TreeSet<SNP> snps_set = new TreeSet<SNP>();
+		
+		snps_set.addAll(ihs.keySet());
+		snps_set.addAll(xpehh.keySet());
+		snps_set.addAll(ihh.keySet());
+		snps_set.addAll(ddaf.keySet());
+		snps_set.addAll(daf.keySet());
+		snps_set.addAll(fst.keySet());
+		//snps_set.addAll(tajd.keySet());
+		//snps_set.addAll(new.keySet());
+		
 		List<SNP> all_snps = new LinkedList<SNP>();
 		
-		all_snps = buildAllSNPs(all_snps, ihs_snps);
-		all_snps = buildAllSNPs(all_snps, xpehh_snps);
-		all_snps = buildAllSNPs(all_snps, ihh_snps);
-		all_snps = buildAllSNPs(all_snps, ddaf_snps);
-		all_snps = buildAllSNPs(all_snps, daf_snps);
-		all_snps = buildAllSNPs(all_snps, fst_snps);
-		//all_snps = buildAllSNPs(all_snps, tajd_snps);
-		//all_snps = buildAllSNPs(all_snps, new_snps);
+		for(SNP s : snps_set)
+			all_snps.add(s);
 		
-		Collections.sort(all_snps);
-			
 		return all_snps;
 	}
 	
@@ -100,14 +86,14 @@ public class WindowStats implements Comparable<WindowStats>{
 		
 		int nxt_pos = end_pos;
 		
-		nxt_pos = comparePositions(nxt_pos, prev_pos, ihs_snps);
-		nxt_pos = comparePositions(nxt_pos, prev_pos, xpehh_snps);
-		nxt_pos = comparePositions(nxt_pos, prev_pos, ihh_snps);
-		nxt_pos = comparePositions(nxt_pos, prev_pos, ddaf_snps);
-		nxt_pos = comparePositions(nxt_pos, prev_pos, daf_snps);
-		nxt_pos = comparePositions(nxt_pos, prev_pos, fst_snps);
-		//nxt_pos = comparePositions(nxt_pos, prev_pos, tajd_snps);
-		//nxt_pos = comparePositions(nxt_pos, prev_pos, new_snps);
+		nxt_pos = comparePositions(nxt_pos, prev_pos, ihs.keySet());
+		nxt_pos = comparePositions(nxt_pos, prev_pos, xpehh.keySet());
+		nxt_pos = comparePositions(nxt_pos, prev_pos, ihh.keySet());
+		nxt_pos = comparePositions(nxt_pos, prev_pos, ddaf.keySet());
+		nxt_pos = comparePositions(nxt_pos, prev_pos, daf.keySet());
+		nxt_pos = comparePositions(nxt_pos, prev_pos, fst.keySet());
+		//nxt_pos = comparePositions(nxt_pos, prev_pos, tajd.keySet());
+		//nxt_pos = comparePositions(nxt_pos, prev_pos, new.keySet());
 		
 		if(nxt_pos == prev_pos)
 			return -1;
@@ -124,240 +110,428 @@ public class WindowStats implements Comparable<WindowStats>{
 	}
 
 	public List<SNP> getIHSsnps() {
+		
+		List<SNP> ihs_snps = new ArrayList<SNP>();
+		
+		for(SNP s : ihs.keySet())
+			ihs_snps.add(s);
+		
 		return ihs_snps;
 	}
 
 	public List<Double> getIHSstats() {
+		
+		List<Double> ihs_stats = new ArrayList<Double>();
+		
+		for(SNP s : ihs.keySet())
+			ihs_stats.add(ihs.get(s));
+		
 		return ihs_stats;
 	}
 
+	/**
+	 * Sets the WindowStats ihs tree to the Lists of stats and snps. Assumes List indexes indicate
+	 * corresponding values of SNP and ihs score. If lists are of unequal length nothing happens.
+	 * 
+	 * @param ihs_stats
+	 * @param ihs_snps
+	 */
 	public void setIHS(List<Double> ihs_stats, List<SNP> ihs_snps) {
-		this.ihs_stats = ihs_stats;
-		this.ihs_snps = ihs_snps;
+		
+		if(ihs_stats.size() == ihs_snps.size()) {
+			
+			ihs.clear();
+			ihs = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < ihs_snps.size(); i++) 
+				ihs.put(ihs_snps.get(i), ihs_stats.get(i));
+		}	
 	}
 	
+	/**
+	 * Adds to the WindowStats ihs tree to the Lists of stats and snps. Assumes List indexes indicate
+	 * corresponding values of SNP and ihs score. If lists are of unequal length nothing happens.
+	 * 
+	 * @param ihs_stats
+	 * @param ihs_snps
+	 */
 	public void addIHS(List<Double> ihs_stats, List<SNP> ihs_snps) {
-		this.ihs_stats.addAll(ihs_stats);
-		this.ihs_snps.addAll(ihs_snps);
+		
+		if(ihs_stats.size() == ihs_snps.size()) {
+			
+			for(int i = 0; i < ihs_snps.size(); i++) 
+				ihs.put(ihs_snps.get(i), ihs_stats.get(i));
+		}
 	}
 
 	public List<SNP> getXPEHHsnps() {
+		
+		List<SNP> xpehh_snps = new ArrayList<SNP>();
+		
+		for(SNP s : xpehh.keySet())
+			xpehh_snps.add(s);
+		
 		return xpehh_snps;
 	}
 
 	public List<Double> getXPEHHstats() {
+		
+		List<Double> xpehh_stats = new ArrayList<Double>();
+		
+		for(SNP s : xpehh.keySet())
+			xpehh_stats.add(xpehh.get(s));
+		
 		return xpehh_stats;
 	}
 
 	public void setXPEHH(List<Double> xpehh_stats, List<SNP> xpehh_snps) {
-		this.xpehh_stats = xpehh_stats;
-		this.xpehh_snps = xpehh_snps;
+		
+		if(xpehh_stats.size() == xpehh_snps.size()) {
+			
+			xpehh.clear();
+			xpehh = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < xpehh_snps.size(); i++) 
+				xpehh.put(xpehh_snps.get(i), xpehh_stats.get(i));
+		}	
 	}
 	
 	public void addXPEHH(List<Double> xpehh_stats, List<SNP> xpehh_snps) {
-		this.xpehh_stats.addAll(xpehh_stats);
-		this.xpehh_snps.addAll(xpehh_snps);
+		
+		if(xpehh_stats.size() == xpehh_snps.size()) {
+			
+			for(int i = 0; i < xpehh_snps.size(); i++) 
+				xpehh.put(xpehh_snps.get(i), xpehh_stats.get(i));
+		}
 	}
 
 	public List<SNP> getIHHsnps() {
+		
+		List<SNP> ihh_snps = new ArrayList<SNP>();
+		
+		for(SNP s : ihh.keySet())
+			ihh_snps.add(s);
+		
 		return ihh_snps;
 	}
 	
 	public List<Double> getIHHstats() {
+		
+		List<Double> ihh_stats = new ArrayList<Double>();
+		
+		for(SNP s : ihh.keySet())
+			ihh_stats.add(ihh.get(s));
+		
 		return ihh_stats;
 	}
 
 	public void setIHH(List<Double> ihh_stats, List<SNP> ihh_snps) {
-		this.ihh_stats = ihh_stats;
-		this.ihh_snps = ihh_snps;
+		
+		if(ihh_stats.size() == ihh_snps.size()) {
+			
+			ihh.clear();
+			ihh = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < ihh_snps.size(); i++)
+				ihh.put(ihh_snps.get(i), ihh_stats.get(i));
+		}
 	}
 	
 	public void addIHH(List<Double> ihh_stats, List<SNP> ihh_snps) {
-		this.ihh_stats.addAll(ihh_stats);
-		this.ihh_snps.addAll(ihh_snps);
+		
+		if(ihh_stats.size() == ihh_snps.size()) {
+			
+			for(int i = 0; i < ihh_snps.size(); i++)
+				ihh.put(ihh_snps.get(i), ihh_stats.get(i));
+		}
 	}
 
 	public List<SNP> getDDAFsnps() {
+		
+		List<SNP> ddaf_snps = new ArrayList<SNP>();
+		
+		for(SNP s : ddaf.keySet())
+			ddaf_snps.add(s);
+		
 		return ddaf_snps;
 	}
 
 	public List<Double> getDDAFstats() {
+		
+		List<Double> ddaf_stats = new ArrayList<Double>();
+		
+		for(SNP s : ddaf.keySet())
+			ddaf_stats.add(ddaf.get(s));
+		
 		return ddaf_stats;
 	}
 
-	public void setDDAF(List<Double> daf_stats, List<SNP> daf_snps) {
-		this.ddaf_stats = daf_stats;
-		this.ddaf_snps = daf_snps;
+	public void setDDAF(List<Double> ddaf_stats, List<SNP> ddaf_snps) {
+		
+		if(ddaf_stats.size() == ddaf_snps.size()) {
+			
+			ddaf.clear();
+			ddaf = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < ddaf_snps.size(); i++)
+				ddaf.put(ddaf_snps.get(i), ddaf_stats.get(i));
+		}
 	}
 	
 	public void addDDAF(List<Double> ddaf_stats, List<SNP> ddaf_snps) {
-		this.ddaf_stats.addAll(ddaf_stats);
-		this.ddaf_snps.addAll(ddaf_snps);
+		
+		if(ddaf_stats.size() == ddaf_snps.size()) {
+			
+			for(int i = 0; i < ddaf_snps.size(); i++)
+				ddaf.put(ddaf_snps.get(i), ddaf_stats.get(i));
+		}
 	}
 	
 	public List<SNP> getDAFsnps() {
+		
+		List<SNP> daf_snps = new ArrayList<SNP>();
+		
+		for(SNP s : daf.keySet())
+			daf_snps.add(s);
+		
 		return daf_snps;
 	}
 
 	public List<Double> getDAFstats() {
+		
+		List<Double> daf_stats = new ArrayList<Double>();
+		
+		for(SNP s : daf.keySet())
+			daf_stats.add(daf.get(s));
+		
 		return daf_stats;
 	}
 
 	public void setDAF(List<Double> daf_stats, List<SNP> daf_snps) {
-		this.daf_stats = daf_stats;
-		this.daf_snps = daf_snps;
+		
+		if(daf_stats.size() == daf_snps.size()) {
+			
+			daf.clear();
+			daf = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < daf_snps.size(); i++)
+				daf.put(daf_snps.get(i), daf_stats.get(i));
+		}
 	}
 	
 	public void addDAF(List<Double> daf_stats, List<SNP> daf_snps) {
-		this.daf_stats.addAll(daf_stats);
-		this.daf_snps.addAll(daf_snps);
+		
+		if(daf_stats.size() == daf_snps.size()) {
+			
+			for(int i = 0; i < daf_snps.size(); i++)
+				daf.put(daf_snps.get(i), daf_stats.get(i));
+		}
 	}
 	
-//	public List<SNP> getTAJDsnps() {
-//		return daf_snps;
-//	}
-//
-//	public List<Double> getTAJDstats() {
-//		return daf_stats;
-//	}
-//
-//	public void setTAJD(List<Double> tajd_stats, List<SNP> tajd_snps) {
-//		this.tajd_stats = tajd_stats;
-//		this.tajd_snps = tajd_snps;
-//	}
-//	
-//	public void addTAFD(List<Double> tajd_stats, List<SNP> tajd_snps) {
-//		this.tajd_stats.addAll(tajd_stats);
-//		this.tajd_snps.addAll(tajd_snps);
-//	}
-	
-//	public List<SNP> getNEWsnps() {
-//		return new_snps;
-//	}
-//
-//	public List<Double> getNEWstats() {
-//		return new_stats;
-//	}
-//
-//	public void setNEW(List<Double> new_stats, List<SNP> new_snps) {
-//		this.new_stats = new_stats;
-//		this.new_snps = new_snps;
-//	}
-//	
-//	public void addNEW(List<Double> new_stats, List<SNP> new_snps) {
-//		this.new_stats.addAll(new_stats);
-//		this.new_snps.addAll(new_snps);
-//	}
-
 	public List<SNP> getFSTsnps() {
+		
+		List<SNP> fst_snps = new ArrayList<SNP>();
+		
+		for(SNP s : fst.keySet())
+			fst_snps.add(s);
+		
 		return fst_snps;
 	}
 	
 	public List<Double> getFSTstats() {
+		
+		List<Double> fst_stats = new ArrayList<Double>();
+		
+		for(SNP s : fst.keySet())
+			fst_stats.add(fst.get(s));
+		
 		return fst_stats;
 	}
 
 	public void setFST(List<Double> fst_stats, List<SNP> fst_snps) {
-		this.fst_stats = fst_stats;
-		this.fst_snps = fst_snps;
+		
+		if(fst_stats.size() == fst_snps.size()) {
+			
+			fst.clear();
+			fst = new TreeMap<SNP, Double>();
+			
+			for(int i = 0; i < fst_snps.size(); i++)
+				fst.put(fst_snps.get(i), fst_stats.get(i));
+		}
 	}
 	
 	public void addFST(List<Double> fst_stats, List<SNP> fst_snps) {
-		this.fst_stats.addAll(fst_stats);
-		this.fst_snps.addAll(fst_snps);
+		
+		if(fst_stats.size() == fst_snps.size()) {
+			
+			for(int i = 0; i < fst_snps.size(); i++)
+				fst.put(fst_snps.get(i), fst_stats.get(i));
+		}
 	}
 	
-	public Double getScore(List<SNP> snps, List<Double> stats, SNP snp) {
-		
-		for(int i = 0; i < snps.size(); i++) {
-			if(snps.get(i).sameAs(snp))
-				return stats.get(i);
-		}
-		
-		return Double.NaN;
-	}
+//	public List<SNP> getTAJDsnps() {
+//		
+//		List<SNP> tajd_snps = new ArrayList<SNP>();
+//		
+//		for(SNP s : tajd.keySet())
+//			tajd_snps.add(s);
+//		
+//		return tajd_snps;
+//	}
+//
+//	public List<Double> getTAJDstats() {
+//		
+//		List<Double> tajd_stats = new ArrayList<Double>();
+//		
+//		for(SNP s : tajd.keySet())
+//			tajd_stats.add(tajd.get(s));
+//		
+//		return tajd_stats;
+//	}
+//
+//	public void setTAJD(List<Double> tajd_stats, List<SNP> tajd_snps) {
+//		
+//		if(tajd_stats.size() == tajd_snps.size()) {
+//			
+//			tajd.clear();
+//			tajd = new TreeMap<SNP, Double>();
+//			
+//			for(int i = 0; i < tajd_snps.size(); i++)
+//				tajd.put(tajd_snps.get(i), tajd_stats.get(i));
+//		}
+//	}
+//	
+//	public void addTAFD(List<Double> tajd_stats, List<SNP> tajd_snps) {
+//		
+//		if(tajd_stats.size() == tajd_snps.size()) {
+//			
+//			for(int i = 0; i < tajd_snps.size(); i++)
+//				tajd.put(tajd_snps.get(i), tajd_stats.get(i));
+//		}
+//	}
+	
+//	public List<SNP> getNEWsnps() {
+//		
+//		List<SNP> new_snps = new ArrayList<SNP>();
+//		
+//		for(SNP s : new.keySet())
+//			new_snps.add(s);
+//		
+//		return new_snps;
+//	}
+//
+//	public List<Double> getNEWstats() {
+//		List<Double> new_stats = new ArrayList<Double>();
+//		
+//		for(SNP s : new.keySet())
+//			new_stats.add(new.get(s));
+//		
+//		return new_stats;
+//	}
+//
+//	public void setNEW(List<Double> new_stats, List<SNP> new_snps) {
+//		
+//		if(new_stats.size() == new_snps.size()) {
+//			
+//			new.clear();
+//			new = new TreeMap<SNP, Double>();
+//			
+//			for(int i = 0; i < new_snps.size(); i++)
+//				new.put(new_snps.get(i), new_stats.get(i));
+//		}
+//	}
+//	
+//	public void addNEW(List<Double> new_stats, List<SNP> new_snps) {
+//		
+//		if(new_stats.size() == new_snps.size()) {
+//			
+//			for(int i = 0; i < new_snps.size(); i++)
+//				new.put(new_snps.get(i), new_stats.get(i));
+//		}
+//	}
 	
 	public Double getIhsScore(SNP snp) {
 		
-		for(int i = 0; i < ihs_snps.size(); i++) {
-			if(ihs_snps.get(i).sameAs(snp))
-				return ihs_stats.get(i);
-		}
+		Double score = ihs.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
 	
 	public Double getIhhScore(SNP snp) {
 		
-		for(int i = 0; i < ihh_snps.size(); i++) {
-			if(ihh_snps.get(i).sameAs(snp))
-				return ihh_stats.get(i);
-		}
+		Double score = ihh.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
 	
 	public Double getXpehhScore(SNP snp) {
 		
-		for(int i = 0; i < xpehh_snps.size(); i++) {
-			if(xpehh_snps.get(i).sameAs(snp))
-				return xpehh_stats.get(i);
-		}
+		Double score = xpehh.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
 	
 	public Double getDDafScore(SNP snp) {
 		
-		for(int i = 0; i < ddaf_snps.size(); i++) {
-			if(ddaf_snps.get(i).sameAs(snp))
-				return ddaf_stats.get(i);
-		}
+		Double score = ddaf.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
 	
 	public Double getDafScore(SNP snp) {
 		
-		for(int i = 0; i < daf_snps.size(); i++) {
-			if(daf_snps.get(i).sameAs(snp))
-				return daf_stats.get(i);
-		}
+		Double score = daf.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
-
-//	public Double getTajDScore(SNP snp) {
-//	
-//		for(int i = 0; i < tajd_snps.size(); i++) {
-//			if(tajd_snps.get(i).sameAs(snp))
-//				return tajd_stats.get(i);
-//		}
-//	
-//		return Double.NaN;
-//	}
-	
-//	public Double getNewScore(SNP snp) {
-//	
-//		for(int i = 0; i < new_snps.size(); i++) {
-//			if(new_snps.get(i).sameAs(snp))
-//				return new_stats.get(i);
-//		}
-//	
-//		return Double.NaN;
-//	}
 	
 	public Double getFstScore(SNP snp) {
 		
-		for(int i = 0; i < fst_snps.size(); i++) {
-			if(fst_snps.get(i).sameAs(snp))
-				return fst_stats.get(i);
-		}
+		Double score = fst.get(snp);
 		
-		return Double.NaN;
+		if(score == null)
+			return Double.NaN;
+		else
+			return score;
 	}
+
+//	public Double getTajdScore(SNP snp) {
+//		
+//		Double score = tajd.get(snp);
+//		
+//		if(score == null)
+//			return Double.NaN;
+//		else
+//			return score;
+//	}
+	
+//	public Double getNewScore(SNP snp) {
+//		
+//		Double score = new.get(snp);
+//		
+//		if(score == null)
+//			return Double.NaN;
+//		else
+//			return score;
+//	}
 	
 	public boolean containsSNP(SNP s) {
+		
 		if(st_pos <= s.getPosition() && end_pos >= s.getPosition())
 			return true;
 		else
@@ -483,33 +657,11 @@ public class WindowStats implements Comparable<WindowStats>{
 		return std_cms;
 	}
 	
-	private List<SNP> buildAllSNPs(List<SNP> all_snps, List<SNP> snps) {
+	private int comparePositions(int nxt_pos, int prev_pos, Set<SNP> snps) {
 		
-		for(int i = 0; i < snps.size(); i++) {
-			if(!containsSNP(all_snps, snps.get(i)))
-					all_snps.add(snps.get(i));
-		}
-		
-		return all_snps;
-	}
-	
-	private boolean containsSNP(List<SNP> all_snps, SNP snp) {
-		
-		for(SNP s : all_snps) {
-			if(s.sameAs(snp))
-				return true;
-		}
-		
-		return false;
-	}
-	
-	private int comparePositions(int nxt_pos, int prev_pos, List<SNP> snps) {
-		
-		for(int i = 0; i < snps.size(); i++) {
-			SNP s = snps.get(i);
-			if(s.getPosition() > prev_pos && s.getPosition() <= nxt_pos) {
-				return s.getPosition();
-			}
+		for(SNP s : snps) {
+			if(s.getPosition() > prev_pos && s.getPosition() <= nxt_pos)
+				nxt_pos = s.getPosition();
 		}
 		
 		return nxt_pos;
@@ -558,14 +710,14 @@ public class WindowStats implements Comparable<WindowStats>{
 		
 		StringBuilder sb = new StringBuilder();
 		
-		Double iHS_score = getScore(ihs_snps, ihs_stats, s);
-		Double XPEHH_score = getScore(xpehh_snps, xpehh_stats, s);
-		Double iHH_score = getScore(ihh_snps, ihh_stats, s);
-		Double DDAF_score = getScore(ddaf_snps, ddaf_stats, s);
-		Double DAF_score = getScore(daf_snps, daf_stats, s);
-		Double Fst_score = getScore(fst_snps, fst_stats, s);
-		//Double TAJD_score = getScore(tajd_snps, tajd_stats, s);
-		//Double NEW_score = getScore(new_snps, new_stats, cur_snp);
+		Double iHS_score = getIhsScore(s);
+		Double XPEHH_score = getXpehhScore(s);
+		Double iHH_score = getIhhScore(s);
+		Double DDAF_score = getDDafScore(s);
+		Double DAF_score = getDafScore(s);
+		Double Fst_score = getFstScore(s);
+		//Double TAJD_score = getTajdScore(s);
+		//Double NEW_score = getNewScore(s);
 		
 		Double pop_score_std = win_scores_prod_std.get(s);
 		Double mop_score_std = win_scores_mean_std.get(s);
