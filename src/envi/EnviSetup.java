@@ -49,10 +49,10 @@ public class EnviSetup {
 			
 		} catch (Exception e) {
 			
-			System.out.println("CMS Died Prematurely." 
+			System.out.println("SelecT Died Prematurely." 
 					+ " Check log output for troubleshooting.");
 			
-			log.addLine("\n\nCMS Died Prematurely. Error in computation.");
+			log.addLine("\n\nSelecT Died Prematurely. Error in computation.");
 			
 			e.printStackTrace();
 		}
