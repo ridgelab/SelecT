@@ -92,7 +92,7 @@ public class Log {
 				//TODO: throw new error
 			}
 			
-			log_file = new File("stats_log_" + name + ".txt");
+			log_file = new File("stats_" + name + ".log");
 			if(!log_file.exists()) {
 				
 				log_file.createNewFile();
@@ -129,10 +129,10 @@ public class Log {
 	private File createLogFile(String name, boolean rename) throws IOException {
 		
 		int num = 1;
-		File file = new File(name + ".txt");
+		File file = new File(name + ".log");
 		
 		while(file.exists() && rename) {
-			file = new File(name + num + ".txt");
+			file = new File(name + num + ".log");
 			num++;
 		}
 		
