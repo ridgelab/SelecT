@@ -73,6 +73,8 @@ public class SignificanceAnalyzer {
 			log.addLine("\n\nSelecT Died Prematurely. Error in computation.");
 			
 			e.printStackTrace();
+
+			System.exit(1) // alternately, we could remove this and mv the next 2 lines into the try block
 		}	
 		
 		System.out.println("\n\nSelecT significance analysis finished!");
