@@ -14,6 +14,7 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.internal.HelpScreenException;
 
 import org.apache.commons.math3.special.Erf;
 
@@ -74,7 +75,7 @@ public class SignificanceAnalyzer {
 			
 			e.printStackTrace();
 
-			System.exit(1) // alternately, we could remove this and mv the next 2 lines into the try block
+			System.exit(1); // alternately, we could remove this and mv the next 2 lines into the try block
 		}	
 		
 		System.out.println("\n\nSelecT significance analysis finished!");
@@ -136,6 +137,11 @@ public class SignificanceAnalyzer {
 		
 		//Checking to make sure input is correct
 		try {parser.parseArgs(args, parsedArgs);}
+		catch (HelpScreenException e)
+		{
+			//this shows up as an ArgumentParserException, so we catch it here to avoid a stack trace output
+			System.exit(0);
+		}
     	catch (ArgumentParserException e) {
     		System.out.println("Fatal error in argument parsing: see log");
             e.printStackTrace();
@@ -148,6 +154,7 @@ public class SignificanceAnalyzer {
 			
 			System.exit(0);
         }
+		
 		return parsedArgs;
 	}
 	

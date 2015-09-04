@@ -13,6 +13,7 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.internal.HelpScreenException;
 import calc.*;
 import errors.StatsCalcException;
 import tools.*;
@@ -104,6 +105,11 @@ public class StatsCalc {
 		
 		//Checking to make sure input is correct
 		try {parser.parseArgs(args, parsedArgs);}
+		catch (HelpScreenException e)
+		{
+			//this shows up as an ArgumentParserException, so we catch it here to avoid a stack trace output
+			System.exit(0);
+		}
     	catch (ArgumentParserException e) {
     		System.out.println("Fatal error in argument parsing: see log");
             e.printStackTrace();
