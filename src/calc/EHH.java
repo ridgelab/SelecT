@@ -4,21 +4,22 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import tools.ExtendedHaplotype;
 import tools.Individual;
 import tools.SNP;
 import tools.Window;
-import tools.ExtendedHaplotype;
 
-/*
+/**
+ * Calculates the EHH (Extended-Haplotype Homozygosity)
+ * score as presented by Sabeti et al (2002)
+ * 
  * Uses the equation:
  * 
  * 			Summation(i=1)=>s (eti _combine_ 2)
  * EHH	=	---------------
  * 				(Ct _combine_ 2)
  * 
- * 
  */
-
 public class EHH {
 	
 	private static double SIGNIFICANT_EHH = 0.05;
@@ -44,6 +45,16 @@ public class EHH {
 	
 	private List<SNP> dups_test = new ArrayList<SNP>();
 	
+	/**
+	 * Sets up the environment to run the EHH statistic
+	 * See supplemental material for more detail.
+	 * 
+	 * @param core_win		window of the core site 
+	 * @param individuals	individuals of target population
+	 * @param core_snp		Core SNP (sore site allele)
+	 * @param all_haplo		all haplotypes for the population
+	 * @param all_win		all Windows in the tested region
+	 */
 	public EHH(Window core_win, Individual[] individuals, SNP core_snp, 
 			ExtendedHaplotype all_haplo, List<Window> all_win) {
 		
@@ -68,6 +79,12 @@ public class EHH {
 		group.add(all_haplo);
 	}
 	
+	/**
+	 * Calculates the extended haplotype homozygosity score to the given position
+	 * 
+	 * @param end_pos	position to end calculation
+	 * @return			False if no significant EHH found  
+	 */
 	public boolean calcEhhToPosition(int end_pos) {
 		
 		dups_test = new ArrayList<SNP>();
@@ -80,28 +97,31 @@ public class EHH {
 		
 		//Boundary position check for EHH calculation
 		SNP nxt_snp = new SNP();
-		while(isValidPosition(end_pos, last_snp.getPosition())) {
+		while (isValidPosition(end_pos, last_snp.getPosition())) {
 			
 			nxt_snp = getClosestSNP(nxt_snp);
 			
 			//=========Duplicate Data Exception==========
-			if(dups_test.contains(nxt_snp)) {
+			if (dups_test.contains(nxt_snp)) {
 				System.out.println("\nWarning: CORE_" + core_snp + " has unhandled duplicate data");
 				System.out.println("\t-Unexpected duplicate with " + nxt_snp);
 				System.out.println("\t-Consider removing duplicate and rerun window");
 				return false;
 			}
-			else
+			else {
 				dups_test.add(nxt_snp);
+			}
 			//===========================================
 			
 			//both boundaries are hit; not enough variance for significance
-			if(nxt_snp == null)
+			if (nxt_snp == null) {
 				return false;
+			}
 			
 			//a 3Mb max distance enforced (bigger bounds are unlikely to have significant LD)
-			if(Math.abs(nxt_snp.getPosition() - core_snp.getPosition()) > MAX_DISTANCE)
+			if (Math.abs(nxt_snp.getPosition() - core_snp.getPosition()) > MAX_DISTANCE) {
 				return false;
+			}
 			
 			//incorporates the new SNP into all extended haplotypes (increase length by 1)
 			group = createNewExtHaploGroup(nxt_snp);
@@ -119,6 +139,7 @@ public class EHH {
 	 * Organizes all Extended Haplotypes until there are insignificant 
 	 * homozygosity levels (EHH <= 0.05)
 	 * 
+	 * @param ehh_cutoff	threshold for significant EHH score
 	 * @return return true if the analysis generated significant results
 	 * @throws EhhComputationException 
 	 */
@@ -134,28 +155,31 @@ public class EHH {
 		
 		//Significance check of EHH value
 		SNP nxt_snp = new SNP();
-		while(cur_ehh_value > ehh_cutoff) { 
+		while (cur_ehh_value > ehh_cutoff) { 
 			
 			nxt_snp = getClosestSNP(nxt_snp);
 			
 			//=========Duplicate Data Exception==========
-			if(dups_test.contains(nxt_snp)) {
+			if (dups_test.contains(nxt_snp)) {
 				System.out.println("*Warning: CORE_" + core_snp + " has unhandled duplicate data");
 				System.out.println("\t-Unexpected duplicate with " + nxt_snp);
 				System.out.println("\t-Consider removing duplicate and rerun window");
 				return false;
 			}
-			else
+			else {
 				dups_test.add(nxt_snp);
+			}
 			//===========================================
 			
 			//both boundaries are hit; not enough variance for significance
-			if(nxt_snp == null)
+			if (nxt_snp == null) {
 				return false;
+			}
 			
 			//a 3Mb max distance enforced (bigger bounds are unlikely to have significant LD)
-			if(Math.abs(nxt_snp.getPosition() - core_snp.getPosition()) > MAX_DISTANCE) 
+			if (Math.abs(nxt_snp.getPosition() - core_snp.getPosition()) > MAX_DISTANCE) {
 				return false;
+			}
 			
 			//incorporates the new SNP into all extended haplotypes (increase length by 1)
 			group = createNewExtHaploGroup(nxt_snp);
@@ -193,8 +217,9 @@ public class EHH {
 		int boundary = Math.abs(core_snp.getPosition() - boundary_pos);
 		int prev_range = Math.abs(core_snp.getPosition() - prev_pos);
 		
-		if(boundary >= prev_range)
+		if (boundary >= prev_range) {
 			return true;
+		}
 		
 		return false;
 	}
@@ -202,8 +227,9 @@ public class EHH {
 	private double[] convertAllEhhValuesToArray() {
 		
 		double[] all_ehh = new double[all_ehh_values.size()];
-		for(int i = 0; i < all_ehh_values.size(); i++)
+		for (int i = 0; i < all_ehh_values.size(); i++) {
 			all_ehh[i] = all_ehh_values.get(i);
+		}
 		
 		return all_ehh;
 	}
@@ -211,15 +237,16 @@ public class EHH {
 	private int[] convertAllEhhPositionsToArray() {
 		
 		int[] all_pos = new int[all_ehh_positions.size()];
-		for(int i = 0; i < all_ehh_positions.size(); i++) 
+		for(int i = 0; i < all_ehh_positions.size(); i++) {
 			all_pos[i] = all_ehh_positions.get(i);
+		}
 		
 		return all_pos;
 	}
 	
 	private void saveEHH(double ehh, SNP nxt_snp) {
 		
-		if(nxt_snp.getPosition() >= core_snp.getPosition()) {
+		if (nxt_snp.getPosition() >= core_snp.getPosition()) {
 			all_ehh_values.addLast(ehh);
 			all_ehh_positions.addLast(nxt_snp.getPosition());
 		}
@@ -235,7 +262,7 @@ public class EHH {
 	private double calcEHH(int ct_comb_2) {
 		
 		int sum = 0;
-		for(ExtendedHaplotype eh : group) {
+		for (ExtendedHaplotype eh : group) {
 			sum += combineSetBy2(eh);
 		}
 		
@@ -249,62 +276,72 @@ public class EHH {
 		int size = set.size();
 		
 		int score = 0;
-		for(int i = 0; i < size; i++)
+		for (int i = 0; i < size; i++) {
 			score += size - (i + 1);
+		}
 		
 		return score;
 	}
 	
 	private LinkedList<ExtendedHaplotype> createNewExtHaploGroup(SNP nxt_snp) {
 		
-		if(nxt_snp == null)
+		if (nxt_snp == null) {
 			return null;
+		}
 		
 		LinkedList<ExtendedHaplotype> updated_group = new LinkedList<ExtendedHaplotype>();
 		
 		int nxt_snp_index = -1;
-		if(nxt_snp.getPosition() >= core_snp.getPosition())
+		if (nxt_snp.getPosition() >= core_snp.getPosition()) {
 			nxt_snp_index = upstrm_win.getSnpIndex(nxt_snp);
-		else
+		}
+		else {
 			nxt_snp_index = dwnstrm_win.getSnpIndex(nxt_snp);
+		}
 		
-		for(ExtendedHaplotype eh : group) {
+		for (ExtendedHaplotype extended_haplotype : group) {
 			
 			//if the ExtHaplo is size = 1 it is by definition already completely unique 
 			//and doen't need to be checked for more uniqueness
-			if(eh.size() == 1){
-				updated_group.add(eh);
+			if (extended_haplotype.size() == 1){
+				updated_group.add(extended_haplotype);
 			}
 			else {
 			
-				ExtendedHaplotype eh_0 = new ExtendedHaplotype();
-				ExtendedHaplotype eh_1 = new ExtendedHaplotype();
+				ExtendedHaplotype extended_haplotype_0 = new ExtendedHaplotype();
+				ExtendedHaplotype extended_haplotype_1 = new ExtendedHaplotype();
 				
-				while(!eh.isEmpty()) {
+				while (!extended_haplotype.isEmpty()) {
 					
-					int id = eh.getNextID();
-					int strand = eh.getNextStrand();
+					int id = extended_haplotype.getNextID();
+					int strand = extended_haplotype.getNextStrand();
 					
 					Individual indv = individuals[id];
 					
 					int allele = -1;
-					if(strand == 1)
-						allele = indv.getStrand1Allele(nxt_snp_index);
-					if(strand == 2)
-						allele = indv.getStrand2Allele(nxt_snp_index);
+					if (strand == 1) {
+						allele = indv.getAlleleFromStrand(nxt_snp_index, true);
+					}
+					if (strand == 2) {
+						allele = indv.getAlleleFromStrand(nxt_snp_index, false);
+					}
 					
-					if(allele == 0) 
-						eh_0.add(id, strand);
-					if(allele == 1) 
-						eh_1.add(id, strand);
+					if (allele == 0) {
+						extended_haplotype_0.add(id, strand);
+					}
+					if (allele == 1) {
+						extended_haplotype_1.add(id, strand);
+					}
 					
-					eh.removeFirst();
+					extended_haplotype.removeFirst();
 				}
 				
-				if(eh_0.size() > 0)
-					updated_group.add(eh_0);
-				if(eh_1.size() > 0)
-					updated_group.add(eh_1);
+				if (extended_haplotype_0.size() > 0) {
+					updated_group.add(extended_haplotype_0);
+				}
+				if (extended_haplotype_1.size() > 0) {
+					updated_group.add(extended_haplotype_1);
+				}
 			}
 		}
 		
@@ -317,22 +354,24 @@ public class EHH {
 		SNP temp_upstrm_snp = getNextUpstreamSNP(prev_snp);
 		
 		int dwnstrm_snp_length = -1;
-		if(temp_dwnstrm_snp != null)
+		if (temp_dwnstrm_snp != null) {
 			dwnstrm_snp_length = Math.abs(core_snp.getPosition() - temp_dwnstrm_snp.getPosition());
+		}
 		
 		int upstrm_snp_length = -1;
-		if(temp_upstrm_snp != null)
+		if (temp_upstrm_snp != null) {
 			upstrm_snp_length = Math.abs(core_snp.getPosition() - temp_upstrm_snp.getPosition());
+		}
 			
-		if(upstrm_snp_length == -1 && dwnstrm_snp_length == -1) {
+		if (upstrm_snp_length == -1 && dwnstrm_snp_length == -1) {
 			return null;
-		} else if(upstrm_snp_length == -1) {
+		} else if (upstrm_snp_length == -1) {
 			return incrementDownstream(temp_dwnstrm_snp);
-		} else if(dwnstrm_snp_length == -1) {
+		} else if (dwnstrm_snp_length == -1) {
 			return incrementUpstream(temp_upstrm_snp);
-		} else if(dwnstrm_snp_length < upstrm_snp_length) {
+		} else if (dwnstrm_snp_length < upstrm_snp_length) {
 			return incrementDownstream(temp_dwnstrm_snp);
-		} else if(upstrm_snp_length <= dwnstrm_snp_length){
+		} else if (upstrm_snp_length <= dwnstrm_snp_length){
 			return incrementUpstream(temp_upstrm_snp);
 		}
 		
@@ -346,8 +385,9 @@ public class EHH {
 		upstrm_snp = temp_upstrm_snp;
 		
 		//this is done only if the new upstrm_snp is outside of the current window
-		if(!upstrm_win.containsIndex(old_index + 1))
+		if (!upstrm_win.containsIndex(old_index + 1)) {
 			upstrm_win = findWindow(old_index + 1);
+		}
 		
 		return upstrm_snp;
 	}
@@ -359,8 +399,9 @@ public class EHH {
 		dwnstrm_snp = temp_dwnstrm_snp;
 		
 		//this is done only if the new dwnstrm_snp is outside of the current window
-		if(!dwnstrm_win.containsIndex(old_index - 1))
+		if (!dwnstrm_win.containsIndex(old_index - 1)) {
 			dwnstrm_win = findWindow(old_index - 1);
+		}
 		
 		return dwnstrm_snp;
 	}
@@ -368,19 +409,21 @@ public class EHH {
 	private SNP getNextDownstreamSNP(SNP prev_snp) {
 		
 		//to skip this function if you have reached the boundary of the chr
-		if(dwnstrm_snp == null || dwnstrm_win == null)
+		if (dwnstrm_snp == null || dwnstrm_win == null) {
 			return null;
+		}
 		
 		SNP nxt_dwn_snp = new SNP();
 		int nxt_index = dwnstrm_win.getSnpIndex(dwnstrm_snp) - 1;
 		
-		if(dwnstrm_win.containsIndex(nxt_index))
+		if (dwnstrm_win.containsIndex(nxt_index)) {
 			nxt_dwn_snp = dwnstrm_win.getSNP(nxt_index);
+		}
 		else {
 			
 			Window temp_dwnstrm_win = findWindow(nxt_index);
 			
-			if(temp_dwnstrm_win == null) {
+			if (temp_dwnstrm_win == null) {
 				dwnstrm_win = null;
 				dwnstrm_snp = null;
 				return null;
@@ -394,20 +437,22 @@ public class EHH {
 	
 	private SNP getNextUpstreamSNP(SNP prev_snp) {
 		
-		//to skip this function if you have reached the boundary of the chr
-		if(upstrm_snp == null || upstrm_win == null)
+		//to skip this function if you have reached the boundary of the chromosome
+		if (upstrm_snp == null || upstrm_win == null) {
 			return null;
+		}
 		
 		SNP nxt_up_snp = new SNP();
 		int nxt_index = upstrm_win.getSnpIndex(upstrm_snp) + 1;
 		
-		if(upstrm_win.containsIndex(nxt_index))
+		if (upstrm_win.containsIndex(nxt_index)) {
 			nxt_up_snp = upstrm_win.getSNP(nxt_index);
+		}
 		else {
 			
 			Window temp_upstrm_win = findWindow(nxt_index);
 			
-			if(temp_upstrm_win == null) {
+			if (temp_upstrm_win == null) {
 				upstrm_win = null;
 				upstrm_snp = null;
 				return null;
@@ -421,11 +466,13 @@ public class EHH {
 	
 	private Window findWindow(int index) {
 		
-		for(Window w : all_win) {
-			if(w.containsIndex(index)) 
+		for (Window w : all_win) {
+			if (w.containsIndex(index)) {
 				return w;
+			}
 		}
 		
 		return null;
 	}
 }
+

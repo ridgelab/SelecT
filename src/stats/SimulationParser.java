@@ -8,6 +8,10 @@ import java.util.Scanner;
 import errors.StatsCalcException;
 import tools.SimDist;
 
+/**
+ * Parses the simulation files
+ *
+ */
 public class SimulationParser {
 	
 	private final int NUM_TESTS = 5;
@@ -15,18 +19,35 @@ public class SimulationParser {
 	private String neut_path = "sim_data" + File.separator + "neutral_simulation.tsv";
 	private String sel_path = "sim_data" + File.separator + "selection_simulation.tsv";
 	
+	/**
+	 * Sets up the environment for parsing the environment
+	 * 
+	 * @param sim_dir
+	 */
 	public SimulationParser(File sim_dir) {
 		
 		this.neut_path = sim_dir.getAbsolutePath() + File.separator + "neutral_simulation.tsv";
 		this.sel_path = sim_dir.getAbsolutePath() + File.separator + "selection_simulation.tsv";
 	}
 	
+	/**
+	 * Parses and returns the data for simulations of neutral selection
+	 * 
+	 * @return	the neutral simulations data
+	 * @throws StatsCalcException
+	 */
 	public SimDist[] getNeutralSimulations() throws StatsCalcException {
 		
 		return parseSimulatedData(neut_path);
 		
 	}
 	
+	/**
+	 * Parses and returns the data fir simulations of positive selection
+	 * 
+	 * @return	the positive simulations data
+	 * @throws StatsCalcException
+	 */
 	public SimDist[] getSelectedSimulations() throws StatsCalcException {
 		
 		return parseSimulatedData(sel_path);
@@ -36,22 +57,21 @@ public class SimulationParser {
 		
 		SimDist[] dists = createDistributions();
 		
-		try {
-			Scanner scan = new Scanner(new File(file_path));
+		try (Scanner scan = new Scanner(new File(file_path))) {
 			scan.nextLine();//skip header line
 			
 			while(scan.hasNext()) {
 				
 				String[] vals = scan.nextLine().split("\\s+");
 				
-				if(vals.length != NUM_TESTS) {
+				if (vals.length != NUM_TESTS) {
 					String err_type = "NumTestError\tIrregularities in number of simulated data columns";
 					throw new StatsCalcException(err_type);
 				}
 				
 				//This function depends a lot on the way the sim file is set up
 				//AND the SimDist type values (it was engineered this way)
-				for(int i = 0; i < NUM_TESTS; i++) {
+				for (int i = 0; i < NUM_TESTS; i++) {
 					double val = Double.parseDouble(vals[i]);
 					dists[i].addSimValue(val);
 				}
@@ -92,10 +112,11 @@ public class SimulationParser {
 	@SuppressWarnings("unused")
 	private void printSimDistArr(SimDist[] dists) {
 		
-		for(int i = 0; i < NUM_TESTS; i++) {
+		for (int i = 0; i < NUM_TESTS; i++) {
 			List<Double> vals = dists[i].getSimVals();
-			for(int j = 0; j < vals.size(); j++)
+			for (int j = 0; j < vals.size(); j++) {
 				System.out.print(vals.get(j) + "  ");
+			}
 			
 			System.out.println();
 		}

@@ -10,11 +10,17 @@ import java.util.List;
 
 import errors.FileParsingException;
 import errors.IllegalInputException;
-import tools.*;
+import tools.Log;
+import tools.SNP;
+import tools.WindowStats;
 
+/**
+ * Runs combination of windows and analysis data from statistical calculation
+ *
+ */
 public class Combiner {
 
-	private static String[] DEFAULT = {"i", "x", "h", "dd", "d", "f", "up", "um", "p", "m"};//"t", "new"
+	private static String[] DEFAULT = {"i", "x", "h", "dd", "d", "f", "up", "um", "p", "m"};
 	
 	private int chr;
 	
@@ -26,15 +32,23 @@ public class Combiner {
 	
 	private Log log;
 	
+	/**
+	 * Constructor, instantiates the Combiner class will the input arguments from 
+	 * the command line (already parsed by the SignificanceAnalyzer class)
+	 * 
+	 * @param arg_map					map of the arguments. Run SignificanceAnalyzer with -h option for more details 
+	 * @param log						universal log file
+	 * @throws IllegalInputException
+	 */
 	public Combiner(HashMap<String, Object> arg_map, Log log) throws IllegalInputException {
 		
 		this.log = log;
 		
-		chr = (Integer) arg_map.get("chr");
+		chr = (Integer) arg_map.get("chromosome_num");
 		wrk_dir = (File) arg_map.get("wrk_dir");
 		
 		stats_dir = new File(wrk_dir.getAbsolutePath() + File.separator + "stats_files");
-		if(!stats_dir.isDirectory()) {
+		if (!stats_dir.isDirectory()) {
 			String msg = "Error: Stat files directory path does not exist";
 			throw new IllegalInputException(log, msg);
 		}
@@ -43,19 +57,31 @@ public class Combiner {
 		stat_str = new String[0];
 	}
 	
-	public void combineWindows(String str) throws Exception {
+	/**
+	 * Runs combination for the windows created in statistical calculation with a 
+	 * combination filter used to generate the specific list of stats desired.
+	 * 
+	 * @param combine_filter
+	 * @throws Exception
+	 */
+	public void combineWindows(String combine_filter) throws Exception {
 		
 		log.addLine("\tRunning Window Combiner");
 		System.out.println("\tRunning Window Combiner");
 		
-		stat_str = createStatString(str);
+		stat_str = createStatString(combine_filter);
 		
 		log.addLine("Reading in files");
 		System.out.println("Reading in files");
 		importData(false);
 	}
 	
-	//combines all of the stats
+	/**
+	 * Runs combination for the windows created in statistical calculation with a 
+	 * default filter used to generate the list of stats printed.
+	 * 
+	 * @throws FileParsingException
+	 */
 	public void combineWindows() throws FileParsingException {
 		
 		log.addLine("\nRunning Window Combiner");
@@ -68,6 +94,12 @@ public class Combiner {
 		
 	}
 	
+	/**
+	 * Runs combination for the windows created in statistical calculation with a 
+	 * default filter used to generate the list of stats printed. Filters incomplete data.
+	 * 
+	 * @throws FileParsingException
+	 */
 	public void combineAnalysisData() throws FileParsingException {
 		
 		log.addLine("\nRunning Window Combiner");
@@ -79,29 +111,37 @@ public class Combiner {
 		importData(true);
 	}
 	
+	/**
+	 * Writes out the statistical results of SelecT analysis
+	 * 
+	 * @throws FileParsingException
+	 */
 	public void writeStats() throws FileParsingException {
 		
 		System.out.println("Writing combined windows");
 		
 		try {
 			wrk_dir = new File(wrk_dir.getAbsolutePath() + File.separator + "final_out");
-			if(!wrk_dir.exists())
+			if (!wrk_dir.exists()) {
 				wrk_dir.mkdir();
+			}
 			
 			File out_file = new File(wrk_dir.getAbsoluteFile() + File.separator 
 					+ "combined_windows.tsv");
 			int num = 1;
-			while(out_file.exists()) {
+			while (out_file.exists()) {
 				out_file = new File(wrk_dir.getAbsoluteFile() + File.separator 
 						+ "combined_windows" + num + ".tsv");
 				num++;
 			}
 			out_file.createNewFile();
 			
-			if(stat_str.equals(DEFAULT))
+			if (stat_str.equals(DEFAULT)) {
 				simplePrint(out_file);
-			else 
+			}
+			else {
 				specificPrint(out_file);
+			}
 			
 		} catch(IOException e) {
 			String msg = "Error: There was a problem with printing to the output file in " + wrk_dir.getAbsolutePath();
@@ -119,95 +159,112 @@ public class Combiner {
 		boolean i,x,h,dd,d,f,up,um,p,m;
 		i = x = h = dd = d = f = up = um = p = m = false;
 		
-		if(ssContains("i"))
+		if (ssContains("i")) {
 			i = true;
-		if(ssContains("h"))
+		}
+		if (ssContains("h")) {
 			h = true;
-		if(ssContains("x"))
+		}
+		if (ssContains("x")) {
 			x = true;
-		if(ssContains("dd"))
+		}
+		if (ssContains("dd")) {
 			dd = true;
-		if(ssContains("d"))
+		}
+		if (ssContains("d")) {
 			d = true;
-		if(ssContains("f"))
+		}
+		if (ssContains("f")) {
 			f = true;
-		//if(ssContains("t"))
-		//	t = true;
-		//if(ssContains("new"))
-		//	new = true;
-		if(ssContains("up"))
+		}
+		if (ssContains("up")) {
 			up = true;
-		if(ssContains("um"))
+		}
+		if (ssContains("um")) {
 			um = true;
-		if(ssContains("p"))
+		}
+		if (ssContains("p")) {
 			p = true;
-		if(ssContains("m"))
+		}
+		if (ssContains("m")) {
 			m = true;
+		}
 		
 		PrintWriter pw = new PrintWriter(out_file);
 		pw.print("snp_id\tposition");
-		if(i)
+		if (i) {
 			pw.print("\tiHS");
-		if(x)
+		}
+		if (x) {
 			pw.print("\tXPEHH");
-		if(h)
+		}
+		if (h) {
 			pw.print("\tiHH");
-		if(dd)
+		}
+		if (dd) {
 			pw.print("\tdDAF");
-		if(d)
+		}
+		if (d) {
 			pw.print("\tDAF");
-		if(f)
+		}
+		if (f) {
 			pw.print("\tFst");
-		//if(t)
-		//	pw.print("\t"TajD");
-		//if(new)
-		//	pw.print("\t"New");
-		if(up)
+		}
+		if (up) {
 			pw.print("\tUnstd_PoP");
-		if(um)
+		}
+		if (um) {
 			pw.print("\tUnstd_MoP");
-		if(p)
+		}
+		if (p) {
 			pw.print("\tPoP");
-		if(m)
+		}
+		if (m) {
 			pw.print("\tMoP");
+		}
 		pw.print("\n");
 		
-		for(int j = 0; j < all_ws.size(); j++) {
+		for (int j = 0; j < all_ws.size(); j++) {
 			
 			WindowStats ws = all_ws.get(j);
 			List<SNP> all_snps = ws.getAllSNPs();
-			for(int k = 0; k < all_snps.size(); k++) {
+			for (int k = 0; k < all_snps.size(); k++) {
 				
 				SNP snp = all_snps.get(k);
 				pw.write(snp.getSnpID() + "\t" + snp.getPosition());
-				if(i)
+				if (i) {
 					pw.write("\t" + ws.getIhsScore(snp).toString());
-				if(x)
+				}
+				if (x) {
 					pw.write("\t" + ws.getXpehhScore(snp).toString());
-				if(h)
+				}
+				if (h) {
 					pw.write("\t" + ws.getIhhScore(snp).toString());
-				if(dd)
+				}
+				if (dd) {
 					pw.write("\t" + ws.getDDafScore(snp).toString());
-				if(d)
+				}
+				if (d) {
 					pw.write("\t" + ws.getDafScore(snp).toString());
-				if(f)
+				}
+				if (f) {
 					pw.write("\t" + ws.getFstScore(snp).toString());
-				//if(t)
-				//	pw.write("\t" + ws.getTajDScore(snp).toString());
-				//if(new)
-				//	pw.write("\t" + ws.getNewScore(snp).toString());
-				if(up)
+				}
+				if (up) {
 					pw.write("\t" + ws.getUnstdPopScore(snp).toString());
-				if(um)
+				}
+				if (um) {
 					pw.write("\t" + ws.getUnstdMopScore(snp).toString());
-				if(p)
+				}
+				if (p) {
 					pw.write("\t" + ws.getStdPopScore(snp).toString());
-				if(m)
+				}
+				if (m) {
 					pw.write("\t" + ws.getStdMopScore(snp).toString());
+				}
 				pw.write("\n");	
 			}
-		}
-		
+		}		
 		pw.close();
 	}
 	
@@ -217,8 +274,9 @@ public class Combiner {
 		pw.print("snp_id\tposition\tiHS\tXPEHH\tiHH\tdDAF\tDAF\tFst"//\tTajD\tNew
 				+ "\tunstd_PoP\tunstd_MoP\twin_PoP\twin_MoP\n");
 		
-		for(int i = 0; i < all_ws.size(); i++)
+		for (int i = 0; i < all_ws.size(); i++) {
 			pw.print(all_ws.get(i));
+		}
 		
 		pw.close();
 	}
@@ -227,7 +285,7 @@ public class Combiner {
 		
 		String[] all_file_names = stats_dir.list();
 		
-		for(int i = 0; i < all_file_names.length; i++) {
+		for (int i = 0; i < all_file_names.length; i++) {
 			
 			File win_file = new File(stats_dir.getAbsolutePath() 
 					+ File.separator + all_file_names[i]);
@@ -237,8 +295,8 @@ public class Combiner {
 	
 	private void addWindowFile(File win_file, boolean filter_incomplete_data) throws FileParsingException {
 		
-		if(win_file != null && win_file.exists() 
-				&& win_file.getName().charAt(0) != '.'
+		if (win_file != null && win_file.exists() 
+					&& win_file.getName().charAt(0) != '.'
 				&& win_file.getName().contains("chr" + chr)
 				&& win_file.getName().contains("_s")
 				&& win_file.getName().contains("-e")) {
@@ -251,6 +309,10 @@ public class Combiner {
 			WindowParser wp = new WindowParser(log, win_file, st_pos, end_pos);
 			WindowStats ws = wp.parseWindow(filter_incomplete_data);
 			all_ws.add(ws);
+		}
+		else {
+			log.addLine("\nWARNING: Skipping invalid file " + win_file.getName() + 
+					". Please ensure that correct arguments were input for file location and chromosome number.");
 		}
 	}
 	
@@ -272,9 +334,10 @@ public class Combiner {
 	
 	private boolean ssContains(String stat) {
 		
-		for(int i = 0; i < stat_str.length; i++) {
-			if(stat_str[i].equals(stat))
+		for (int i = 0; i < stat_str.length; i++) {
+			if (stat_str[i].equals(stat)) {
 				return true;
+			}
 		}
 		
 		return false;
@@ -284,10 +347,10 @@ public class Combiner {
 		
 		String[] fin_str = str.split(":");
 		
-		for(int i = 0; i < fin_str.length; i++) {
+		for (int i = 0; i < fin_str.length; i++) {
 			
 			String s = fin_str[i];
-			if(!s.equals("i") && !s.equals("h") && !s.equals("x") 
+			if (!s.equals("i") && !s.equals("h") && !s.equals("x") 
 					&& !s.equals("d") && !s.equals("f") && !s.equals("dd")
 					&& !s.equals("up") && !s.equals("um") && !s.equals("p") 
 					&& !s.equals("m")) {

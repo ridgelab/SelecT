@@ -2,20 +2,32 @@ package tools;
 
 import java.util.LinkedList;
 
+/**
+ * ExtendedHaplotype stores a haplotype as a list of IDStrands.
+ * The IDStrand is a wrapper containing an individual ID and an 
+ * identifier showing the strand to be 1 or 2. 
+ */
 public class ExtendedHaplotype {
 
 	/*
 	 * use a FIFO method for organizing information
 	 * 		use LinkedList .removeFirst()
 	 */
-	
 	private LinkedList<IDStrand> haplo;
 	
+	/**
+	 * Simple constructor
+	 */
 	public ExtendedHaplotype() {
 		haplo = new LinkedList<IDStrand>();
-	}
+	}	
 	
-	
+	/**
+	 * Adds a new individual and strand to the extended haplotype.
+	 * 
+	 * @param id		individual ID
+	 * @param strand	strand identifier (1 or 2)
+	 */
 	public void add(int id, int strand) {
 		haplo.add(new IDStrand(id, strand));
 	}
@@ -73,11 +85,12 @@ public class ExtendedHaplotype {
 		public IDStrand(int id, int strand) {
 			this.id = id;
 			
-			if(strand == 1 || strand == 2) {
+			if (strand == 1 || strand == 2) {
 				this.strand = strand;
 			}
-			else
+			else {
 				strand = 0; //error
+			}
 		}
 		
 		public int getID() {
@@ -95,7 +108,5 @@ public class ExtendedHaplotype {
 	}
 //------------------------------------------------------------------------------	
 //------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-	
-	
+//------------------------------------------------------------------------------	
 }

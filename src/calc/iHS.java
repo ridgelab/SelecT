@@ -11,6 +11,10 @@ import tools.SNP;
 import tools.SimDist;
 import tools.Window;
 
+/**
+ * Calculates the iHS (integrated extended-Haplotype homozygosity, Standardized)
+ * score as presented by Voight et al (2006)
+ */
 public class iHS extends HaplotypeTests {
 	
 	//General population information
@@ -20,7 +24,7 @@ public class iHS extends HaplotypeTests {
 	private ExtendedHaplotype der_eh;
 	private List<Window> all_win;
 	private List<Window> anc_types;
-	private GeneticMap gm;
+	private GeneticMap geneticMap;
 	
 	//Simulations
 	private SimDist neut_sim;
@@ -28,7 +32,7 @@ public class iHS extends HaplotypeTests {
 	
 	//Analysis options
 	private boolean ihs_abs;
-	private boolean deflt_prior;
+	private boolean default_prior;
 	private double prior_prob;
 	
 	//iHS statistic information
@@ -40,36 +44,41 @@ public class iHS extends HaplotypeTests {
 	
 	/**
 	 * For setting up the environment to run the iHS statistic
+ 	 * See supplemental material for more detail.
 	 * 
-	 * @param log			universal log for progress and error output
-	 * @param win			current Window within the target population (tp)
-	 * @param individuals	all Individuals of the target population
-	 * @param anc_types		all Ancestral types in the form of SNPs; ancestral type is a0
-	 * @param all_win		all Windows in the tested region, usually the chr
-	 * @param gm			Genetic Map for the tested region, usually the chr
+	 * @param win					current Window within the target population (tp)
+	 * @param individuals			all Individuals of the target population
+	 * @param anc_types				all Ancestral types in the form of SNPs; ancestral type is a0
+	 * @param all_win				all Windows in the tested region
+	 * @param genetic_map			Genetic Map for the tested region
+	 * @param neut_sim				neutral simulation distances
+	 * @param sel_sim				simulation distances with selection
+	 * @param ihs_absolute_val		True if the absolute value of the ihs score should be calculated
+	 * @param default_prior			True if the default probability score (1 / number of scores) should be used instead of the prior_prob.
+	 * @param prior_prob			prior probability score
 	 */
 	public iHS(Window win, 
 				Individual[] individuals, 
 				List<Window> anc_types,
 				List<Window> all_win, 
-				GeneticMap gm,
+				GeneticMap genetic_map,
 				SimDist neut_sim,
 				SimDist sel_sim,
-				boolean ihs_abs,
-				boolean deflt_prior,
+				boolean ihs_absolute_val,
+				boolean default_prior,
 				double prior_prob){
 		
 		this.win = win;
 		this.individuals = individuals;
-		this.gm = gm;
+		this.geneticMap = genetic_map;
 		this.neut_sim = neut_sim;
 		this.sel_sim = sel_sim;
 		
 		this.anc_types = anc_types;
 		this.all_win = all_win;
 		
-		this.ihs_abs = ihs_abs;
-		this.deflt_prior = deflt_prior;
+		this.ihs_abs = ihs_absolute_val;
+		this.default_prior = default_prior;
 		this.prior_prob = prior_prob;
 		
 		anc_eh = new ExtendedHaplotype();
@@ -103,13 +112,14 @@ public class iHS extends HaplotypeTests {
 		
 		//Starting iHS Analysis
 		int st_index = win.getStIndex();
-		for(int i = 0; i < win.getSNPs().size(); i++) {
+		for (int i = 0; i < win.getSNPs().size(); i++) {
 			
 			Double unstd_iHS = getUnstandardizedIHS(win.getSNPs().get(i), (st_index + i));
 			
 			//saving the successful unstandardized iHS 
-			if(unstd_iHS != null)
+			if (unstd_iHS != null) {
 				all_unstd_iHS.add(unstd_iHS);
+			}
 
 		}
 		
@@ -117,28 +127,38 @@ public class iHS extends HaplotypeTests {
 		all_std_iHS = standardizeData(all_unstd_iHS);
 		
 		//calculates the bayesian posterior probability of each given score
-//		bayes_probs = calcScoreProbabilities(all_std_iHS, neut_sim, sel_sim, true);
 		calcScoreProbabilities();
-		
-//		printStats();
-//		logRunStats();	
 	}
 	
+	/**
+	 * Gets the iHS score at a given SNP
+	 * 
+	 * @param s	the SNP whose score is desired
+	 * @return the iHS score 
+	 */
 	@Override
 	public Double getScoreAtSNP(SNP s) {
-		for(int i = 0; i < all_iHS_snp.size(); i++) {
-	  		if(s.sameAs(all_iHS_snp.get(i)))
+		for (int i = 0; i < all_iHS_snp.size(); i++) {
+	  		if (s.sameAs(all_iHS_snp.get(i))) {
 	  			return all_std_iHS.get(i);
+	  		}
 	  	}
 	  
 	  	return Double.NaN;
 	}
 	
+	/**
+	 * Gets the bayesian posterior probability score at a given SNP
+	 * 
+	 * @param s	the SNP whose score is desired
+	 * @return the probability score 
+	 */
 	@Override
 	public Double getProbAtSNP(SNP s) {
-	  	for(int i = 0; i < all_iHS_snp.size(); i++) {
-	  		if(s.sameAs(all_iHS_snp.get(i)))
+	  	for (int i = 0; i < all_iHS_snp.size(); i++) {
+	  		if (s.sameAs(all_iHS_snp.get(i))) {
 	  			return bayes_post.get(i);
+	  		}
 	  	}
 	  
 	  	return null;
@@ -163,21 +183,13 @@ public class iHS extends HaplotypeTests {
 	public void printStats() {
 		
 		System.out.println("\nShowing iHS Data");
-		for(int i = 0; i < all_std_iHS.size(); i++) {
+		for (int i = 0; i < all_std_iHS.size(); i++) {
 			System.out.print("iHS =\t");
 			System.out.print(all_iHS_snp.get(i) + "\t");
 			System.out.print(all_unstd_iHS.get(i) + "\t");
 			System.out.println(all_std_iHS.get(i));	
 		}
 	}
-
-//	@Override
-//	public void logRunStats() {
-//		
-//		log.addLine("Out of " + win.getSNPs().size() + " SNPs, " 
-//				+ all_std_iHS.size() + " were successful and " + unused_snps.size() 
-//				+ " SNPs were unsuccessful");
-//	}
 	
 	public void printRStats() {
 		
@@ -191,7 +203,7 @@ public class iHS extends HaplotypeTests {
 		System.out.println("\tMean:\t" + mean);
 		System.out.println("\tSt Dev:\t" + st_dev);
 		
-		for(int i = 0; i < all_std_iHS.size(); i++) {
+		for (int i = 0; i < all_std_iHS.size(); i++) {
 			
 			ihs_sb.append(all_std_iHS.get(i) + ",");
 			pos_sb.append(all_iHS_snp.get(i).getPosition() + ",");
@@ -202,18 +214,21 @@ public class iHS extends HaplotypeTests {
 	
 	private void calcScoreProbabilities() throws StatsCalcException {
 		
-		if(ihs_abs) {
+		if (ihs_abs) {
 			List<Double> all_std_iHS_abs = new ArrayList<Double>();
-			for(int i = 0; i < all_std_iHS.size(); i++) {
-				if(all_std_iHS.get(i) > 0)
+			for (int i = 0; i < all_std_iHS.size(); i++) {
+				if (all_std_iHS.get(i) > 0) {
 					all_std_iHS_abs.add((-1)*all_std_iHS.get(i));
-				else
+				}
+				else {
 					all_std_iHS_abs.add(all_std_iHS.get(i));
+				}
 			}
-			bayes_post = calcScoreProbabilities(all_std_iHS_abs, neut_sim, sel_sim, deflt_prior, prior_prob);
+			bayes_post = calcScoreProbabilities(all_std_iHS_abs, neut_sim, sel_sim, default_prior, prior_prob);
 		}
-		else
-			bayes_post = calcScoreProbabilities(all_std_iHS, neut_sim, sel_sim, deflt_prior, prior_prob);
+		else {
+			bayes_post = calcScoreProbabilities(all_std_iHS, neut_sim, sel_sim, default_prior, prior_prob);
+		}
 		
 	}
 	
@@ -225,13 +240,13 @@ public class iHS extends HaplotypeTests {
 		SNP anc_snp = getAncestralSNP(core_snp, anc_types);
 		
 		
-		if(checkValidSnpComparison(core_snp, anc_snp)) {
+		if (checkValidSnpComparison(core_snp, anc_snp)) {
 				
 			//Initial Grouping (according to ancestral or derived type)
 			setHaplotypeGroups(anc_eh, der_eh, individuals, snp_index, anc_snp, core_snp);
 			
 			//No variance and thus no EHH pattern can be found
-			if(anc_eh.size() <= 1 || der_eh.size() <= 1) {
+			if (anc_eh.size() <= 1 || der_eh.size() <= 1) {
 				unused_snps.add(core_snp);
 				return null;
 			}
@@ -245,8 +260,9 @@ public class iHS extends HaplotypeTests {
 			
 			//Running Ancestral Analysis
 			significant = anc_ehh.calcSignificantEhhValues();
-			if(!significant)
+			if (!significant) {
 				return null;
+			}
 			
 			double[] ehh_values_anc = anc_ehh.getEhhValues();
 			int[] ehh_pos_anc = anc_ehh.getEhhPositions();
@@ -254,15 +270,16 @@ public class iHS extends HaplotypeTests {
 			
 			//Running Derived Analysis
 			significant = der_ehh.calcSignificantEhhValues();
-			if(!significant)
+			if (!significant) {
 				return null;
+			}
 			
 			double[] ehh_values_der = der_ehh.getEhhValues();
 			int[] ehh_pos_der = der_ehh.getEhhPositions();
 			
 			//find the area under the curve created by the EHH data
-			double anc_ihh = integrateEhhValues(ehh_values_anc, ehh_pos_anc, core_snp, gm);
-			double der_ihh = integrateEhhValues(ehh_values_der, ehh_pos_der, core_snp, gm);
+			double anc_ihh = integrateEhhValues(ehh_values_anc, ehh_pos_anc, core_snp, geneticMap);
+			double der_ihh = integrateEhhValues(ehh_values_der, ehh_pos_der, core_snp, geneticMap);
 			
 			//main iHS function; unstandardized
 			unstd_iHS = Math.log(anc_ihh / der_ihh);
@@ -273,7 +290,7 @@ public class iHS extends HaplotypeTests {
 			return null;
 		}
 		
-		if(Double.isNaN(unstd_iHS) || Double.isInfinite(unstd_iHS)) {
+		if (Double.isNaN(unstd_iHS) || Double.isInfinite(unstd_iHS)) {
 			//Irregular iHS values
 			unused_snps.add(core_snp);
 			return null;
@@ -287,7 +304,7 @@ public class iHS extends HaplotypeTests {
 	public void printUnusedSnps() {
 		
 		System.out.println("\nUnused SNPs:");
-		for(SNP s : unused_snps) {
+		for (SNP s : unused_snps) {
 			System.out.println(s);
 		}
 	}

@@ -11,6 +11,10 @@ import tools.SNP;
 import tools.SimDist;
 import tools.Window;
 
+/**
+ * Calculates the XP-EHH (Cross-Population Extended-Haplotype Homozygosity)
+ * score as presented by Sabeti, et al (2007)
+ */
 public class XPEHH extends HaplotypeTests {
 	
 	private static double SIGNIFICANT_EHH_VALUE = 0.045;
@@ -19,7 +23,7 @@ public class XPEHH extends HaplotypeTests {
 	private Window win;
 	private Individual[] tp_individuals;//target population (tp) intersected with the cross population
 	private Individual[] xp_individuals;//cross population (xp) intersected with the target population
-	private GeneticMap gm;
+	private GeneticMap geneticMap;
 	private List<Window> all_win;
 	
 	//Simulations
@@ -27,7 +31,7 @@ public class XPEHH extends HaplotypeTests {
 	private SimDist sel_sim;
 	
 	//Analysis options
-	private boolean deflt_prior;
+	private boolean default_prior;
 	private double prior_prob;
 	
 	//XPEHH statistic information
@@ -38,35 +42,40 @@ public class XPEHH extends HaplotypeTests {
 	private List<Double> bayes_probs;
 	
 	/**
-	 * For setting up the environment to run the XPEHH statistic
+	 * For setting up the environment to run the XPEHH statistic.  
+	 * See supplemental material for more detail.
 	 * 
-	 * @param log				universal log for progress and error output
 	 * @param win				current Window for the intersection of target-cross populations
 	 * @param all_win			all Windows for the intersection of target-cross populations
 	 * @param tp_individuals	all Individuals of the target population after the intersection of target-cross populations
 	 * @param xp_individuals	all Individuals of the cross population after the intersection of target-cross populations
-	 * @param gm				Genetic Map for the tested region, usually the chr
+	 * @param genetic_map		genetic Map for the tested region
+	 * @param neut_sim			neutral simulation distances
+	 * @param sel_sim			simulation distances with selection
+	 * @param default_prior		True if the default probability score (1 / number of scores) should be used instead of the prior_prob. 
+	 * @param prior_prob		prior probability score
+	 *  
 	 */
 	public XPEHH(Window win,
 					List<Window> all_win,
 					Individual[] tp_individuals,
 					Individual[] xp_individuals,
-					GeneticMap gm,
+					GeneticMap genetic_map,
 					SimDist neut_sim,
 					SimDist sel_sim,
-					boolean deflt_prior,
+					boolean default_prior,
 					double prior_prob) {
 		
 		this.win = win;
 		this.tp_individuals = tp_individuals;
 		this.xp_individuals = xp_individuals;
-		this.gm = gm;
+		this.geneticMap = genetic_map;
 		this.neut_sim = neut_sim;
 		this.sel_sim = sel_sim;
 		
 		this.all_win = all_win;
 		
-		this.deflt_prior = deflt_prior;
+		this.default_prior = default_prior;
 		this.prior_prob = prior_prob;
 		
 		unused_snps = new ArrayList<SNP>();
@@ -100,7 +109,7 @@ public class XPEHH extends HaplotypeTests {
 		Individual[] all_indv = combineIndvArrays(tp_individuals, xp_individuals);
 		
 		List<SNP> win_snps = win.getSNPs();
-		for(int i = 0; i < win_snps.size(); i++) {
+		for (int i = 0; i < win_snps.size(); i++) {
 			
 			SNP core_snp = win_snps.get(i);
 			
@@ -108,7 +117,7 @@ public class XPEHH extends HaplotypeTests {
 			EHH comb_ehh = getCombinedEHH(all_indv, core_snp);
 			double last_ehh = comb_ehh.getLastEhhValue();
 			
-			if(last_ehh < SIGNIFICANT_EHH_VALUE && last_ehh > 0.0) {
+			if (last_ehh < SIGNIFICANT_EHH_VALUE && last_ehh > 0.0) {
 				
 				//for defining the EHH range to end EHH calculations
 				SNP last_snp = comb_ehh.getLastSNP();
@@ -117,7 +126,7 @@ public class XPEHH extends HaplotypeTests {
 				Double tp_integral = calcUnstandardEhhIntegral(core_snp, last_snp, tp_individuals);
 				Double xp_integral = calcUnstandardEhhIntegral(core_snp, last_snp, xp_individuals);
 				
-				if(tp_integral != null && xp_integral != null) {
+				if (tp_integral != null && xp_integral != null) {
 					
 					//main XPEHH function; unstandardized
 					double unstd_XPEHH = Math.log(tp_integral / xp_integral);
@@ -141,28 +150,38 @@ public class XPEHH extends HaplotypeTests {
 		all_XPEHH = standardizeData(all_unstd_XPEHH);
 		
 		//calculates the bayesian posterior probability of each given score
-//		bayes_probs = calcScoreProbabilities(all_XPEHH, neut_sim, sel_sim, false);
-		bayes_probs = calcScoreProbabilities(all_XPEHH, neut_sim, sel_sim, deflt_prior, prior_prob);
-		
-//		printStats();
-//		logRunStats();
+		bayes_probs = calcScoreProbabilities(all_XPEHH, neut_sim, sel_sim, default_prior, prior_prob);
 	} 
 	
+	/**
+	 * Gets the XPEHH score at a given SNP
+	 * 
+	 * @param s	the SNP whose score is desired
+	 * @return the XPEHH score 
+	 */
 	@Override
 	public Double getScoreAtSNP(SNP s) {
-		for(int i = 0; i < all_XPEHH_snps.size(); i++) {
-	  		if(s.sameAs(all_XPEHH_snps.get(i)))
+		for (int i = 0; i < all_XPEHH_snps.size(); i++) {
+	  		if (s.sameAs(all_XPEHH_snps.get(i))) {
 	  			return all_XPEHH.get(i);
+	  		}
 	  	}
 	  
 	  	return Double.NaN;
 	}
 	
+	/**
+	 * Gets the bayesian probability score at a given SNP
+	 * 
+	 * @param s	the SNP whose score is desired
+	 * @return the probability score 
+	 */
 	@Override
 	public Double getProbAtSNP(SNP s) {
-	  	for(int i = 0; i < all_XPEHH_snps.size(); i++) {
-	  		if(s.sameAs(all_XPEHH_snps.get(i)))
+	  	for (int i = 0; i < all_XPEHH_snps.size(); i++) {
+	  		if (s.sameAs(all_XPEHH_snps.get(i))) {
 	  			return bayes_probs.get(i);
+	  		}
 	  	}
 	  
 	  	return null;
@@ -187,7 +206,7 @@ public class XPEHH extends HaplotypeTests {
 	public void printStats() {
 		
 		System.out.println("\nShowing XPEHH Data");
-		for(int i = 0; i < all_XPEHH.size(); i++) {
+		for (int i = 0; i < all_XPEHH.size(); i++) {
 			System.out.print("XPEHH =\t");
 			System.out.print(all_XPEHH_snps.get(i) + "\t");
 			System.out.print(all_unstd_XPEHH.get(i) + "\t");
@@ -195,14 +214,6 @@ public class XPEHH extends HaplotypeTests {
 		}
 	}
 
-//	@Override
-//	public void logRunStats() {
-//		
-//		log.addLine("Out of " + win.getSNPs().size() + " SNPs, " 
-//				+ all_XPEHH.size() + " were successful and " + unused_snps.size() 
-//				+ " SNPs were unsuccessful");
-//	}
-	
 	public void printRStats() {
 		
 		double mean  = findMean(all_XPEHH);
@@ -215,7 +226,7 @@ public class XPEHH extends HaplotypeTests {
 		System.out.println("\tMean:\t" + mean);
 		System.out.println("\tSt Dev:\t" + st_dev);
 		
-		for(int i = 0; i < all_XPEHH.size(); i++) {
+		for (int i = 0; i < all_XPEHH.size(); i++) {
 			
 			xpehh_sb.append(all_XPEHH.get(i) + ",");
 			pos_sb.append(all_XPEHH_snps.get(i).getPosition() + ",");
@@ -229,13 +240,14 @@ public class XPEHH extends HaplotypeTests {
 		ExtendedHaplotype pop_eh = setHaplotypeGroup(indv);
 		EHH pop_ehh = new EHH(win, indv, core_snp, pop_eh, all_win);
 		boolean significant = pop_ehh.calcEhhToPosition(last_snp.getPosition());
-		if(!significant)
+		if (!significant) {
 			return null;
+		}
 		
 		double[] ehh_vals = pop_ehh.getEhhValues();
 		int[] ehh_pos = pop_ehh.getEhhPositions();
 		
-		return integrateEhhValues(ehh_vals, ehh_pos, core_snp, gm);
+		return integrateEhhValues(ehh_vals, ehh_pos, core_snp, geneticMap);
 	}
 	
 	private EHH getCombinedEHH(Individual[] all_indv, SNP core_snp) {

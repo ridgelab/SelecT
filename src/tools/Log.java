@@ -5,6 +5,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+/**
+ * Log implementation, used for universal logging during execution and error logs.
+ */
 public class Log {
 	
 	public static enum type {envi, stat, analysis, combine};
@@ -24,6 +27,9 @@ public class Log {
 	private File log_file;
 	private PrintWriter wr;
 	
+	/**
+	 * Simple constructor
+	 */
 	public Log() {
 		
 		try {
@@ -40,29 +46,34 @@ public class Log {
 		}
 	}
 	
+	/**
+	 * Constructor defining type 
+	 * 
+	 * @param type		type of constructor, either envi, stat, or analysis (ex. Log.type.envi)
+	 */
 	public Log(Log.type type) {
 		
 		try {
 			
-			if(type == Log.type.envi) {
+			if (type == Log.type.envi) {
 				
 				log_file = createLogFile("envi_log", true);
 				wr = new PrintWriter(log_file);
 				add(ENVI_ST);
 				
-			} else if(type == Log.type.stat) {
+			} else if (type == Log.type.stat) {
 				
 				log_file = createLogFile("stats_ERROR", false);
 				wr = new PrintWriter(log_file);
 				add(STAT_ST);
 				
-			} else if(type == Log.type.analysis) {
+			} else if (type == Log.type.analysis) {
 				
 				log_file = createLogFile("analysis_log", true);
 				wr = new PrintWriter(log_file);
 				add(ANAL_ST);
 				
-			} else if(type == Log.type.combine) {
+			} else if (type == Log.type.combine) {
 				
 				log_file = createLogFile("combine_log", true);
 				wr = new PrintWriter(log_file);
@@ -83,17 +94,23 @@ public class Log {
 		}
 		
 	}
-	
+	/**
+	 * Constructor defining type and name
+	 * 
+	 * 
+	 * @param type	type of constructor, either envi, stat, or analysis (ex. Log.type.envi)
+	 * @param name	name of constructor
+	 */	
 	public Log(Log.type type, String name) {
 		
 		try {
-			
-			if(type != Log.type.stat) {
-				//TODO: throw new error
+			if (type != Log.type.stat) {
+				System.out.println("Invalid log type. Should be stat.");
+				throw new Exception();
 			}
 			
 			log_file = new File("stats_" + name + ".log");
-			if(!log_file.exists()) {
+			if (!log_file.exists()) {
 				
 				log_file.createNewFile();
 				
@@ -103,20 +120,30 @@ public class Log {
 				add(BEGIN2);
 				add(STAT_BEGIN2);
 			}
-			else
+			else {
 				wr = new PrintWriter(new FileWriter(log_file, true));
-			
-			
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}		
 	}
 	
+	/**
+	 * Writes a message and a newline character to the log file
+	 * @param args
+	 */
 	public void addLine(String args) {
 		wr.write(args + "\n");
 		wr.flush();
 	}
 	
+	/**
+	 * Writes a message to the log file
+	 * 
+	 * @param args
+	 */
 	public void add(String args) {
 		wr.write(args);
 		wr.flush();
@@ -131,7 +158,7 @@ public class Log {
 		int num = 1;
 		File file = new File(name + ".log");
 		
-		while(file.exists() && rename) {
+		while (file.exists() && rename) {
 			file = new File(name + num + ".log");
 			num++;
 		}

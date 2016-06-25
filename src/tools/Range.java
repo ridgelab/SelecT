@@ -2,21 +2,33 @@ package tools;
 
 import java.io.Serializable;
 
+/**
+ * A wrapper for a range of positions in a chromsome, used
+ * to track genetic map information which is often sparse.
+ *
+ */
 @SuppressWarnings("serial")
 public class Range implements Serializable {
 	
-	private int st;
+	private int start;
 	private int end;
 	private int index;
 	
+	/**
+	 * Creates range object
+	 * 
+	 * @param st		start of the range
+	 * @param end		end of the range
+	 * @param index		an index in the range TODO What is this for?
+	 */
 	public Range(int st, int end, int index) {
-		this.st = st;
+		this.start = st;
 		this.end = end;
 		this.index = index;
 	}
 
-	public int getSt() {
-		return st;
+	public int getStart() {
+		return start;
 	}
 
 	public int getEnd() {
@@ -27,15 +39,27 @@ public class Range implements Serializable {
 		return index;
 	}
 	
+	/**
+	 * Discovers if the given position lies within the range
+	 * 
+	 * @param pos	position to test
+	 * @return		True if pos lies within range
+	 */
 	public boolean contains(int pos) {
-		if(pos >= st && pos <= end) 
+		if (pos >= start && pos <= end) {
 			return true;
+		}
 		
 		return false;
 	}
 	
+	/**
+	 * Gets the length of the range (end - start)
+	 * 
+	 * @return	integer length of the range
+	 */
 	public int getPhysRange() {
-		return end - st;
+		return end - start;
 	}
 
 	@Override
@@ -43,31 +67,37 @@ public class Range implements Serializable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + end;
-		result = prime * result + st;
+		result = prime * result + start;
 		result = prime * result + index;
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Range other = (Range) obj;
-		if (end != other.end)
+		if (end != other.end) {
 			return false;
-		if (st != other.st)
+		}
+		if (start != other.start) {
 			return false;
-		if (index != other.index)
+		}
+		if (index != other.index) {
 			return false;
+		}
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "Range [st=" + st + ", end=" + end + ", index=" + index + "]";
+		return "Range [st=" + start + ", end=" + end + ", index=" + index + "]";
 	}
 }

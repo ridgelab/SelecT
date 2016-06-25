@@ -9,37 +9,50 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.List;
 
+import calc.Fst;
+import calc.HaplotypeTests;
+import calc.XPEHH;
+import calc.dDAF;
+import calc.iHH;
+import calc.iHS;
+import errors.StatsCalcException;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.internal.HelpScreenException;
-import calc.*;
-import errors.StatsCalcException;
-import tools.*;
+import tools.GeneticMap;
+import tools.Individual;
+import tools.Log;
+import tools.SNP;
+import tools.SimDist;
+import tools.Window;
+import tools.WindowStats;
 
+/**
+ * 	Hyper-Parallelized Composite of Multiple Signals (CMS) Java implementation GWAS.
+ *	This program calculated the stats that are used in CMS analysis
+ *	@author Hayden Smith
+ */
 public class StatsCalc {
 
-	/** Hyper-Parallelized Composite of Multiple Signals (CMS) Java implementation GWAS and Local study version 1.0
-	 * This program calculated the stats that are used in CMS analysis
-	 * @author Hayden Smith
+	/**
+	 * Entry point. Run with -h option for details of the arguments
+	 * Parses arguments, instantiates the StatsCalc class,
+	 * and starts calculations.
 	 * 
-	 * @param args	Required	SelecT workspace
-	 * @param args	Required	Simulations directory
-	 * @param args	Required	Chromosome number
-	 * @param args	Required	Window number
-	 * @param args	Optional	iHS absolute value probability (--ihs_abs flag)
-	 * @param args	Optional	DAF cutoff (--daf_cutoff flag; default is 0.2)
-	 * @param args	Optional	Prior Probability (--prior_prob flag; default without flag is number of SNPs in window)
+	 * @param args		Command line arguments
 	 */
 	public static void main(String[] args) {
 		
-		HashMap<String, Object> arg_map = setupArgs(args);
-		
-		File wrk_dir = (File) arg_map.get("wrk_dir");
-		Log log = new Log(Log.type.stat, wrk_dir.getName());
+		HashMap<String, Object> arg_map = null;
 		
 		try {
+			arg_map = setupArgs(args);
+			
+			File wrk_dir = (File) arg_map.get("wrk_dir");
+			Log log = new Log(Log.type.stat, wrk_dir.getName());
+			
 			System.out.println("Running Window:\t\t" + arg_map.get("win_num"));
 			System.out.println("Chromosome:\t\t" + arg_map.get("chr"));
 			System.out.println("SelecT Workspace:\t" + wrk_dir);
@@ -54,10 +67,8 @@ public class StatsCalc {
 		 } catch(OutOfMemoryError e) {
 			 
 			 log.addLine(arg_map.get("win_num") + "\tNoMemoryError\tinsufficient memory for running this window");
-			 log.close();
-			 
-			 System.exit(0);
-		 } 
+			 log.close();			 
+		 }
 	}
 	
 	private static HashMap<String, Object> setupArgs(String[] args) {
@@ -67,16 +78,18 @@ public class StatsCalc {
                 .description("Run evolution statistics and calculate composite scores");
 		
 		//Creating required arguments
-		parser.addArgument("wrk_dir").type(Arguments.fileType().verifyIsDirectory()
-                .verifyCanRead()).help("SelecT workspace directory (created in phase 1)");
+		parser.addArgument("-wd", "--wrk_dir").required(true).type(Arguments.fileType()
+				.verifyIsDirectory().verifyCanRead())
+				.help("SelecT workspace directory (created in phase 1)");
 		
-		parser.addArgument("sim_dir").type(Arguments.fileType().verifyIsDirectory()
-                .verifyCanRead()).help("Directory where simulations are saved");
+		parser.addArgument("-sd", "--sim_dir").required(true).type(Arguments.fileType()
+				.verifyIsDirectory().verifyCanRead()).help("Directory where simulations are saved");
+
+		parser.addArgument("-c", "--chr").required(true).type(Integer.class)
+					.help("Chromosome number. Must be equal to or greater than 1.");
 		
-		parser.addArgument("chr").type(Integer.class).choices(Arguments.range(1, 22))
-				.help("Chromosome number");
-		
-		parser.addArgument("win_num").type(Integer.class).help("Window number for current analysis");
+		parser.addArgument("-wn", "--win_num").required(true).type(Integer.class)
+					.help("Window number for current analysis");
 		
 		//Creating optional arguments
 		parser.addArgument("-inon", "--nonabs_ihs").action(Arguments.storeFalse())	
@@ -84,9 +97,9 @@ public class StatsCalc {
 						+ "associated with selection (same as CMS_local). If not included, "
 						+ "large positive AND negative iHS scores equate to greater selection");
 		
-		//na: deflt_prior = true | # of snps in window as prior; prior_prob doesn't matter
-		//--prior_prob: deflt_prior = false, prior_prob = 0.0001 | not dynamic, use prior of 1/10000, these are Broad's parameters
-		//--prior_prob X: deflt_prior = false, prior_prob = X | completely custom prior probability
+		//na: default_prior = true | # of snps in window as prior; prior_prob doesn't matter
+		//--prior_prob: default_prior = false, prior_prob = 0.0001 | not dynamic, use prior of 1/10000, these are Broad's parameters
+		//--prior_prob X: default_prior = false, prior_prob = X | completely custom prior probability
 		parser.addArgument("-pp", "--prior_prob").nargs("?").setConst(0.0001).setDefault(-1.0)
 				.type(Double.class).choices(Arguments.range(0.0, 1.0))
 				.help("Sets the prior probability for bayesian score probability analysis. "
@@ -104,9 +117,10 @@ public class StatsCalc {
 		HashMap<String, Object> parsedArgs = new HashMap<String, Object>();
 		
 		//Checking to make sure input is correct
-		try {parser.parseArgs(args, parsedArgs);}
-		catch (HelpScreenException e)
-		{
+		try {
+			parser.parseArgs(args, parsedArgs);
+		}
+		catch (HelpScreenException e) {
 			//this shows up as an ArgumentParserException, so we catch it here to avoid a stack trace output
 			System.exit(0);
 		}
@@ -127,25 +141,38 @@ public class StatsCalc {
 		String[] sim_files = sim_dir.list();
 		boolean contains_neut = false;
 		boolean contains_sel = false;
-		for(int i = 0; i < sim_files.length; i++) {
-			if(sim_files[i].equals("neutral_simulation.tsv"))
+		for (int i = 0; i < sim_files.length; i++) {
+			if (sim_files[i].equals("neutral_simulation.tsv")) {
 				contains_neut= true;
-			if(sim_files[i].equals("selection_simulation.tsv"))
+			}
+			if (sim_files[i].equals("selection_simulation.tsv")) {
 				contains_sel = true;
+			}
 		}
 		
-		if(!contains_neut || !contains_sel) {
+		if (!contains_neut || !contains_sel) {
 			
 			System.out.println("Fatal error in argument parsing: see log");
 			System.out.println("Could not find required simulations");
 			
 			Log err_log = new Log(Log.type.stat);
 			err_log.addLine("Error: Could not find specific simulations for analysis");
-			err_log.addLine("\t*Go to api for more information or run with -h as first parameter for help");
-			err_log.addLine("\t*You will need to redo this entire step--all new data is invalid");
-			
+			//TODO: include correct wiki page reference
+			err_log.addLine("\t*Go to wiki (https://github.com/jbelyeu/mySelecT/wiki) for more information or run with -h as first parameter for help");
+			err_log.addLine("\t*You will need to redo this entire window--all new data is invalid");
+
 			System.exit(0);
 		}
+		
+		//require start_chr to be positive
+    	int chr_num = (Integer)parsedArgs.get("chr");
+	    if (chr_num < 1) {
+    		System.out.println("Fatal error in argument parsing: see log");
+	    	String msg = "Error: Chromosome number must be 1 or greater.";
+	    	Log err_log = new Log(Log.type.stat);
+	    	err_log.addLine(parsedArgs.get("win_num") + msg);
+	    	err_log.close();
+	    }
 		
 		return parsedArgs;
 	}
@@ -168,7 +195,7 @@ public class StatsCalc {
 	private File sim_dir;
 	
 	//Analysis options
-	private boolean deflt_prior;
+	private boolean default_prior;
 	private boolean ihs_abs;
 	private double daf_cutoff;
 	private double prior_prob;
@@ -179,21 +206,28 @@ public class StatsCalc {
 	private XPEHH x;
 	private dDAF d;
 	private Fst f;
-	//private TajD t;
-	//private NewStat new;
 	
-	private Log log;
+	private static Log log;
 	
+	/**
+	 * Sets up the stat calculation. Reads in and sets arguments.
+	 * 
+	 * @param argMap	hashmap of the arguments to be used
+	 * @param log		universal log file
+	 */
 	public StatsCalc(HashMap<String, Object> argMap, Log log) {
 		
 		tp_win = null;
 		ws = null;
 		
-		this.log = log;
+		StatsCalc.log = log;
 		
 		setArgs(argMap);
 	}
 	
+	/**
+	 * Runs the statistical calculations
+	 */
 	public void runStats() {
 		
 		setupFiles();
@@ -219,7 +253,7 @@ public class StatsCalc {
 			win_stats_file.createNewFile();
 			
 			PrintWriter pw = new PrintWriter(win_stats_file);
-			pw.print("snp_id\tposition\tiHS\tXPEHH\tiHH\tdDAF\tDAF\tFst"//\tTajD\tNew
+			pw.print("snp_id\tposition\tiHS\tXPEHH\tiHH\tdDAF\tDAF\tFst"
 					+ "\tunstd_PoP\tunstd_MoP\twin_PoP\twin_MoP\n");
 			
 			pw.print(ws);
@@ -244,8 +278,6 @@ public class StatsCalc {
 		ws.setDDAF(d.getStats(), d.getSNPs());
 		ws.setDAF(d.getDafStats(), d.getSNPs());
 		ws.setFST(f.getStats(), f.getSNPs());
-		//ws.setTAJD(t.getStats(), t.getSNPs());
-		//ws.setNEW(new.getStats(), new.getSNPs());
 		
 		calcCompositeScores();
 		
@@ -267,7 +299,7 @@ public class StatsCalc {
 		Double[] score_probs = new Double[NUM_TESTS];
 		
 		List<SNP> all_snps = ws.getAllSNPs();
-		for(int j = 0; j < all_snps.size(); j++) {
+		for (int j = 0; j < all_snps.size(); j++) {
 			
 			SNP s = all_snps.get(j);
 			
@@ -286,11 +318,13 @@ public class StatsCalc {
 		
 		Double prod_score = 1.0;
 		
-		for(int i = 0; i < score_probs.length; i++) {
-			if(score_probs[i] != null && ws.getDafScore(s) >= daf_cutoff)
+		for (int i = 0; i < score_probs.length; i++) {
+			if (score_probs[i] != null && ws.getDafScore(s) >= daf_cutoff) {
 				prod_score = prod_score*score_probs[i];
-			else
+			}
+			else {
 				return Double.NaN;
+			}
 		}
 		
 		return prod_score;
@@ -300,13 +334,14 @@ public class StatsCalc {
 		
 		int tot_tests = score_probs.length;
 		Double score = 0.0;
-		for(int i = 0; i < score_probs.length; i++) {
+		for (int i = 0; i < score_probs.length; i++) {
 			
-			if(score_probs[i] != null 
-					&& (daf_cutoff == 0.0 || ws.getDafScore(s) >= daf_cutoff))
+			if (score_probs[i] != null && (daf_cutoff == 0.0 || ws.getDafScore(s) >= daf_cutoff)) {
 				score += score_probs[i];
-			else
+			}
+			else {
 				tot_tests--;
+			}
 		}
 		
 		return score / tot_tests;
@@ -340,14 +375,6 @@ public class StatsCalc {
 			Thread.sleep(WAIT_TIME);
 			f_thrd.start();
 			
-			//StatsThread t_thrd = new StatsThread(t, lock);
-			//Thread.sleep(WAIT_TIME);
-			//t_thrd.start();
-			
-			//StatsThread new_thrd = new StatsThread(new, lock);
-			//Thread.sleep(WAIT_TIME);
-			//new_thrd.start();
-			
 			synchronize(i_thrd, h_thrd, x_thrd, d_thrd, f_thrd);//add t_thrd
 			
 			i = (iHS) i_thrd.getTest();
@@ -355,8 +382,6 @@ public class StatsCalc {
 			x = (XPEHH) x_thrd.getTest();
 			d = (dDAF) d_thrd.getTest();
 			f = (Fst) f_thrd.getTest();
-			//t = (TajD) t_thrd.getTest();
-			//new = (NewStat) new_thrd.getTest();
 		
 		} catch (InterruptedException e) { 
 			e.printStackTrace();
@@ -372,14 +397,14 @@ public class StatsCalc {
 								StatsThread f_thrd) {
 
 		for(;;) {
-			if(i_thrd.isFinished()
-					&& h_thrd.isFinished()
-					&& x_thrd.isFinished()
-					&& d_thrd.isFinished()
-					&& f_thrd.isFinished())
+			if (i_thrd.isFinished() && h_thrd.isFinished() &&
+					x_thrd.isFinished() && d_thrd.isFinished()	&& 
+					f_thrd.isFinished()) {
 				break;
-			else
+			}
+			else {
 				continue;
+			}
 		}
 	}
 	
@@ -436,26 +461,23 @@ public class StatsCalc {
 			//Instantiate Selection Tests
 			i = new iHS(tp_win, tp_indv, anc_types, tp_wins, gm, 
 					neut_sim_arr[SimDist.IHS_TYPE], sel_sim_arr[SimDist.IHS_TYPE],
-					ihs_abs, deflt_prior, prior_prob);
+					ihs_abs, default_prior, prior_prob);
 			
 			h = new iHH(tp_win, tp_indv, anc_types, tp_wins, gm, 
 					neut_sim_arr[SimDist.IHH_TYPE], sel_sim_arr[SimDist.IHH_TYPE],
-					deflt_prior, prior_prob);
+					default_prior, prior_prob);
 			
 			x = new XPEHH(txin_win, txin_wins, tp_inx_indv, xp_int_indv, gm, 
 					neut_sim_arr[SimDist.XPEHH_TYPE], sel_sim_arr[SimDist.XPEHH_TYPE],
-					deflt_prior, prior_prob);
+					default_prior, prior_prob);
 			
 			d = new dDAF(tp_win, tp_indv, xoin_wins, xp_ino_indv, op_inx_indv, anc_types, 
 					neut_sim_arr[SimDist.DDAF_TYPE], sel_sim_arr[SimDist.DDAF_TYPE],
-					deflt_prior, prior_prob);
+					default_prior, prior_prob);
 			
 			f = new Fst(txin_win, tp_inx_indv, xp_int_indv, op_inx_indv, 
 					neut_sim_arr[SimDist.FST_TYPE], sel_sim_arr[SimDist.FST_TYPE],
-					deflt_prior, prior_prob);
-			
-			//t = new TajD(args0, args1, ..., argsx);
-			//new = new NewStat(args0, args1, ..., argsx);
+					default_prior, prior_prob);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -480,7 +502,7 @@ public class StatsCalc {
 	private Object getObject(String path) throws IOException, ClassNotFoundException {
 		
 		File file = new File(path);
-		if(!file.exists()) {
+		if (!file.exists()) {
 			throw new IOException();
 		}
 		
@@ -491,13 +513,14 @@ public class StatsCalc {
 	private String getTargetXCrossWindowFileName() throws IOException {
 		
 		String[] all_files = win_dir.list();
-		for(int i = 0; i < all_files.length; i++) {
+		for (int i = 0; i < all_files.length; i++) {
 			
 			String file_name = all_files[i];
-			if(file_name.contains("chr" + chr)
+			if (file_name.contains("chr" + chr)
 					&& file_name.contains("win" + win_num + "_")
-					&& file_name.contains("x"))
+					&& file_name.contains("x")) {
 				return win_dir.getAbsolutePath() + File.separator + file_name;
+			}
 		}
 		
 		throw new IOException();
@@ -506,13 +529,14 @@ public class StatsCalc {
 	private String getTargetWindowFileName() throws IOException {
 		
 		String[] all_files = win_dir.list();
-		for(int i = 0; i < all_files.length; i++) {
+		for (int i = 0; i < all_files.length; i++) {
 			
 			String file_name = all_files[i];
-			if(file_name.contains("chr" + chr)
+			if (file_name.contains("chr" + chr)
 					&& file_name.contains("win" + win_num)
-					&& !file_name.contains("x")) 
+					&& !file_name.contains("x")) {
 				return win_dir.getAbsolutePath() + File.separator + file_name;
+			}
 		}
 		
 		throw new IOException();
@@ -525,20 +549,21 @@ public class StatsCalc {
 	private void setupFiles() {
 		
 		envi_dir = new File(wrk_dir.getAbsoluteFile() + File.separator + "envi_files" + File.separator + "envi_var");
-		if(!envi_dir.exists() && !envi_dir.isDirectory()) {
+		if (!envi_dir.exists() && !envi_dir.isDirectory()) {
 			log.addLine(win_num + "\tEnviDirError\tCould not find the evironment directory; check api for path names");
 			System.exit(0);
 		}
 		
 		win_dir = new File(wrk_dir.getAbsoluteFile() + File.separator + "envi_files" + File.separator + "all_wins");
-		if(!win_dir.exists() && !win_dir.isDirectory()) {
+		if (!win_dir.exists() && !win_dir.isDirectory()) {
 			log.addLine(win_num + "\tWindowDirError\tCould not find the windows directory; check api for path names");
 			System.exit(0);
 		}
 		
 		wrk_dir = new File(wrk_dir.getAbsolutePath() + File.separator + "stats_files");
-		if(!wrk_dir.exists())
+		if (!wrk_dir.exists()) {
 			wrk_dir.mkdirs();
+		}
 	}
 	
 	private void setArgs(HashMap<String, Object> args) {
@@ -552,17 +577,18 @@ public class StatsCalc {
 		ihs_abs = (Boolean) args.get("nonabs_ihs");
 		
 		prior_prob = (Double) args.get("prior_prob");
-		if(prior_prob == -1.0) 
-			deflt_prior = true;
-		else
-			deflt_prior = false;
+		if (prior_prob == -1.0) {
+			default_prior = true;
+		}
+		else {
+			default_prior = false;
+		}
 	}
 }
 
 class StatsThread extends Thread {
 
-	private final Object lock;
-	
+	private final Object lock;	
 	private int win_num;
 	
 	private Log log;
@@ -581,9 +607,9 @@ class StatsThread extends Thread {
 		finished = false;
 		
 		thrd = new Thread(this);
-//		thrd.start();
 	}
-	
+
+	@Override
 	public void start() {
 		thrd.start();
 	}

@@ -7,8 +7,14 @@ import java.util.List;
 import java.util.Scanner;
 
 import errors.FileParsingException;
-import tools.*;
+import tools.Log;
+import tools.SNP;
+import tools.WindowStats;
 
+/**
+ * Class to parse windows files created by threaded statistical calculations
+ *
+ */
 public class WindowParser {
 	
 	private File win_file;
@@ -17,6 +23,14 @@ public class WindowParser {
 	
 	private Log log;
 	
+	/**
+	 * Creates window parser instance
+	 * 
+	 * @param log		universal log file
+	 * @param win_file	file of window to be parsed
+	 * @param st_pos	starting position for parsing
+	 * @param end_pos	stop position for parsing
+	 */
 	public WindowParser(Log log, File win_file, int st_pos, int end_pos) {
 		
 		this.log = log;
@@ -25,12 +39,21 @@ public class WindowParser {
 		ws = new WindowStats(st_pos, end_pos);
 	}
 	
-	public WindowStats parseWindow(boolean filter) throws FileParsingException {
+	/**
+	 * Runs either the generic parser or the analysis parse
+	 * 
+	 * @param use_analysis_parser		filter to chose either generic or analysis parser. True for analysis parser.  
+	 * @return
+	 * @throws FileParsingException
+	 */
+	public WindowStats parseWindow(boolean use_analysis_parser) throws FileParsingException {
 		
-		if(filter)
+		if (use_analysis_parser) {
 			return runAnalysisParse();
-		else
+		}
+		else {
 			return runGenericParse();
+		}
 	}
 	
 	private WindowStats runGenericParse() throws FileParsingException {
@@ -41,8 +64,6 @@ public class WindowParser {
 		List<SNP> ddaf_snps = new LinkedList<SNP>();
 		List<SNP> daf_snps = new LinkedList<SNP>();
 		List<SNP> fst_snps = new LinkedList<SNP>();
-		//List<SNP> tajd_snps = new LinkedList<SNP>();
-		//List<SNP> new_snps = new LinkedList<SNP>();
 		
 		List<Double> ihs_stats = new LinkedList<Double>();
 		List<Double> xpehh_stats = new LinkedList<Double>();
@@ -50,19 +71,15 @@ public class WindowParser {
 		List<Double> ddaf_stats = new LinkedList<Double>();
 		List<Double> daf_stats = new LinkedList<Double>();
 		List<Double> fst_stats = new LinkedList<Double>();
-		//List<Double> fajd_stats = new LinkedList<Double>();
-		//List<Double> new_stats = new LinkedList<Double>();
 		
-		try {
-			
-			Scanner scan = new Scanner(win_file);
+		try (Scanner scan = new Scanner(win_file)) {
 			scan.nextLine();//skip header line
 			
-			while(scan.hasNext()) {
+			while (scan.hasNext()) {
 				
 				String[] line = scan.nextLine().split("\\s+");
 				
-				if(line.length != 12) {
+				if (line.length != 12) {
 					String msg = "Error: Window file " + win_file.getName() + " has irregular number of scores";
 					throw new FileParsingException(log, msg);
 				}
@@ -74,54 +91,48 @@ public class WindowParser {
 				Double dd_dbl = Double.parseDouble(line[5]);
 				Double d_dbl = Double.parseDouble(line[6]);
 				Double f_dbl = Double.parseDouble(line[7]);
-				//Double t_dbl = Double.parseDouble(line[X]);
-				//Double new_dbl = Double.parseDouble(line[X]);
 				
 				Double un_pop_dbl = Double.parseDouble(line[8]);
 				Double un_mop_dbl = Double.parseDouble(line[9]);
 				Double pop_dbl = Double.parseDouble(line[10]);
 				Double mop_dbl = Double.parseDouble(line[11]);
 				
-				if(i_dbl != Double.NaN) {
+				if (i_dbl != Double.NaN) {
 					ihs_snps.add(s);
 					ihs_stats.add(i_dbl);
 				}
-				if(x_dbl != Double.NaN) {
+				if (x_dbl != Double.NaN) {
 					xpehh_snps.add(s);
 					xpehh_stats.add(x_dbl);
 				}
-				if(h_dbl != Double.NaN) {
+				if (h_dbl != Double.NaN) {
 					ihh_snps.add(s);
 					ihh_stats.add(h_dbl);
 				}
-				if(dd_dbl != Double.NaN) {
+				if (dd_dbl != Double.NaN) {
 					ddaf_snps.add(s);
 					ddaf_stats.add(dd_dbl);
 				}
-				if(d_dbl != Double.NaN) {
+				if (d_dbl != Double.NaN) {
 					daf_snps.add(s);
 					daf_stats.add(d_dbl);
 				}
-				if(f_dbl != Double.NaN) {
+				if (f_dbl != Double.NaN) {
 					fst_snps.add(s);
 					fst_stats.add(f_dbl);
 				}
-				//if(t_dbl != Double.NaN) {
-				//	tajd_snps.add(s);
-				//	tajd_stats.add(t_dbl);
-				//}
-				//if(new_dbl != Double.NaN) {
-				//	new_snps.add(s);
-				//	new_stats.add(new_dbl);
-				//}
-				if(un_pop_dbl != Double.NaN) 
+				if (un_pop_dbl != Double.NaN) {
 					ws.addUnstdPopScore(s, un_pop_dbl);
-				if(un_mop_dbl != Double.NaN) 
+				}
+				if (un_mop_dbl != Double.NaN) {
 					ws.addUnstdMopScore(s, un_mop_dbl);
-				if(pop_dbl != Double.NaN) 
+				}
+				if (pop_dbl != Double.NaN) {
 					ws.addStdPopScore(s, pop_dbl);
-				if(mop_dbl != Double.NaN) 
+				}
+				if (mop_dbl != Double.NaN) {
 					ws.addStdMopScore(s, mop_dbl);
+				}
 			}
 			
 		} catch (FileNotFoundException e) {
@@ -138,8 +149,6 @@ public class WindowParser {
 		ws.setDDAF(ddaf_stats, ddaf_snps);
 		ws.setDAF(daf_stats, daf_snps);
 		ws.setFST(fst_stats, fst_snps);
-		//ws.setTAJD(tajd_stats, tajd_snps);
-		//ws.setNEW(new_stats, new_snps);
 		
 		return ws;
 	}
@@ -152,8 +161,6 @@ public class WindowParser {
 		List<SNP> ddaf_snps = new LinkedList<SNP>();
 		List<SNP> daf_snps = new LinkedList<SNP>();
 		List<SNP> fst_snps = new LinkedList<SNP>();
-		//List<SNP> tajd_snps = new LinkedList<SNP>();
-		//List<SNP> new_snps = new LinkedList<SNP>();
 		
 		List<Double> ihs_stats = new LinkedList<Double>();
 		List<Double> xpehh_stats = new LinkedList<Double>();
@@ -161,19 +168,15 @@ public class WindowParser {
 		List<Double> ddaf_stats = new LinkedList<Double>();
 		List<Double> daf_stats = new LinkedList<Double>();
 		List<Double> fst_stats = new LinkedList<Double>();
-		//List<Double> fajd_stats = new LinkedList<Double>();
-		//List<Double> new_stats = new LinkedList<Double>();
 		
-		try {
-			
-			Scanner scan = new Scanner(win_file);
+		try (Scanner scan = new Scanner(win_file)) {
 			scan.nextLine();//skip header line
 			
-			while(scan.hasNext()) {
+			while (scan.hasNext()) {
 				
 				String[] line = scan.nextLine().split("\\s+");
 				
-				if(line.length != 12) {
+				if (line.length != 12) {
 					String msg = "Error: Window file " + win_file.getName() + " has irregular number of scores";
 					throw new FileParsingException(log, msg);
 				}
@@ -185,22 +188,18 @@ public class WindowParser {
 				Double dd_dbl = Double.parseDouble(line[5]);
 				Double d_dbl = Double.parseDouble(line[6]);
 				Double f_dbl = Double.parseDouble(line[7]);
-				//Double t_dbl = Double.parseDouble(line[X]);
-				//Double new_dbl = Double.parseDouble(line[X]);
 				
 				Double un_pop_dbl = Double.parseDouble(line[8]);
 				Double un_mop_dbl = Double.parseDouble(line[9]);
 				Double pop_dbl = Double.parseDouble(line[10]);
 				Double mop_dbl = Double.parseDouble(line[11]);
 				
-				if(!i_dbl.equals(Double.NaN)
+				if (!i_dbl.equals(Double.NaN)
 						&& !x_dbl.equals(Double.NaN)
 						&& !h_dbl.equals(Double.NaN)
 						&& !dd_dbl.equals(Double.NaN)
 						&& !d_dbl.equals(Double.NaN)
 						&& !f_dbl.equals(Double.NaN)
-						//&& !t_dbl.equals(Double.NaN)
-						//&& !new_dbl.equals(Double.NaN)
 						&& !un_pop_dbl.equals(Double.NaN)
 						&& !un_mop_dbl.equals(Double.NaN)
 						&& !pop_dbl.equals(Double.NaN)
@@ -218,10 +217,6 @@ public class WindowParser {
 					daf_stats.add(d_dbl);
 					fst_snps.add(s);
 					fst_stats.add(f_dbl);
-					//tajd_snps.add(s);
-					//tajd_stats.add(t_dbl);
-					//new_snps.add(s);
-					//new_stats.add(new_dbl);
 					
 					ws.addUnstdPopScore(s, un_pop_dbl);
 					ws.addUnstdMopScore(s, un_mop_dbl);
@@ -245,8 +240,6 @@ public class WindowParser {
 		ws.setDDAF(ddaf_stats, ddaf_snps);
 		ws.setDAF(daf_stats, daf_snps);
 		ws.setFST(fst_stats, fst_snps);
-		//ws.setTAJD(tajd_stats, tajd_snps);
-		//ws.setNEW(new_stats, new_snps);
 		
 		return ws;
 	}

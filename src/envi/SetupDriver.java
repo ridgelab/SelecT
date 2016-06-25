@@ -6,24 +6,26 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import errors.IllegalInputException;
-import errors.UnknownFileException;
 import tools.GeneticMap;
 import tools.Individual;
 import tools.Log;
 import tools.Window;
 
+
+/**
+ * Driver to create the environment for running SelecT.
+ */
 public class SetupDriver {
 
 	private static int MEGABASE_CONVERSION = 1000000;
-	private static String LEGEND_TYPE = ".legend";
-	private static String EMF_TYPE = "emf";
-	private static String ANCESTRAL_TYPE = "ancestral";
-	private static String HAP_TYPE = ".hap";
+//	private static String LEGEND_TYPE = ".legend";
+//	private static String EMF_TYPE = "emf";
+//	private static String ANCESTRAL_TYPE = "ancestral";
+//	private static String HAP_TYPE = ".hap";
 	private static String VCF_TYPE = ".vcf";
 	
 	private boolean run_intersect = true;
@@ -34,11 +36,14 @@ public class SetupDriver {
 	//population declarations
 	private String t_pop;
 	private String x_pop;
-	private String o_pop;
+//	private String o_pop;
+//	private String s_name; //species name
 	
 	//directories and files for accessing and writing data
-	private File data_dir;
-	private File map_dir;
+	private String t_pop_file;
+	private String x_pop_file;
+	private String o_pop_file;
+	private String map_file;
 	private File wrk_dir;
 	
 	//target population variables (tp)
@@ -64,12 +69,24 @@ public class SetupDriver {
 	private Individual[] op_inx_indv;
 	
 	//universal variables
-	private GeneticMap gm;
+	private GeneticMap genMap;
 	private List<Window> anc_types;
+	
+	//location of ancestral data
+	private String anc_data_loc;
+	final private String target = "target";
+	final private String cross = "cross";
+	final private String outgroup = "out";
 	
 	//progress log
 	private Log log;
 
+	/**
+	 * Create SetupDriver instance.
+	 * 
+	 * @param arg_map map of the arguments (argument names -> argument values)
+	 * @Param Log Log file to write runtime information
+	 */
 	public SetupDriver(HashMap<String, Object> arg_map, Log log) throws Exception {
 		
 		this.log = log;
@@ -77,9 +94,17 @@ public class SetupDriver {
 		setArgs(arg_map);
 	}
 	
+	/**
+	 * Runs the setup processes. Specifically, parses the input 
+	 * files using VcfParser instances, uses PopIntersector to 
+	 * intersect the populations, then writes out the results 
+	 * into the workspace.
+	 * 
+	 * @throws Exception
+	 */
 	public void runSetup() throws Exception {
 		
-		for(int i = chr_st; i <= chr_end; i++) {
+		for (int i = chr_st; i <= chr_end; i++) {
 			
 			parseFiles(i);	
 			intersectPopulations();
@@ -138,7 +163,7 @@ public class SetupDriver {
 			File var_dir = new File(wrk_dir.getAbsolutePath() + File.separator + "envi_var");
 			var_dir.mkdirs();
 			
-			if(var_dir.isDirectory()) {
+			if (var_dir.isDirectory()) {
 				String path = "";
 				
 				path = var_dir.getAbsoluteFile() + File.separator + "target_pop_wins.bin";
@@ -169,7 +194,7 @@ public class SetupDriver {
 				writeObj(path, anc_types);
 				
 				path = var_dir.getAbsoluteFile() + File.separator + "genetic_map.bin";
-				writeObj(path, gm);
+				writeObj(path, genMap);
 			}
 			else {
 				String msg = "Could not create directory for environment variables; check output directory path";
@@ -199,7 +224,7 @@ public class SetupDriver {
 	
 	private void intersectPopulations() {
 		
-		if(run_intersect) {
+		if (run_intersect) {
 			System.out.println("Running Intersections");
 			log.add("\nRunning Intersections....");
 			
@@ -236,12 +261,22 @@ public class SetupDriver {
 		log.addLine("\nLoading referenced data into memory for chromosome " + chr);
 		System.out.println("Loading Data");
 		
-		if(containsVCF(data_dir))
+		if (typeVCF(t_pop_file.toString(), 
+					x_pop_file.toString(), 
+					o_pop_file.toString())) {
+			
 			runVcfParcers(chr);
-		else
-			runHapsLegendParcers(chr);
+		}
+		else {
+//			runHapsLegendParcers(chr);
+			String msg = "Only .vcf files are currently supported";
+			throw new IllegalInputException(log, msg);
+		}
 	}
 	
+/*
+ * HAP and LEGEND files are not currently supported
+ * 
 	private void runHapsLegendParcers(int chr) throws Exception {
 		
 		//========Find Path Variables========
@@ -257,8 +292,9 @@ public class SetupDriver {
 		String anc_path = getAncestralPath(data_dir, chr);
 		String map_path = getMapPath(map_dir, chr);
 		
-		if(lg_tp_path.equals(lg_xp_path) && lg_tp_path.equals(lg_op_path))
+		if (lg_tp_path.equals(lg_xp_path) && lg_tp_path.equals(lg_op_path)) {
 			run_intersect = false;
+		}
 		
 		//=======Instantiate Parsers==========
 		PhasedParser tp_pp = new PhasedParser(lg_tp_path, ph_tp_path, log);
@@ -267,8 +303,9 @@ public class SetupDriver {
 		MapParser mp = new MapParser(map_path, log);
 		
 		AncestralParser ap = null;
-		if(!anc_path.equals(".:MISSING:."))
-			ap = new AncestralParser(anc_path, chr, log);
+		if (!anc_path.equals(".:MISSING:.")) {
+			ap = new AncestralParser(anc_path, chr, s_name, log);
+		}
 		
 		//========Import Phased Data===========
 		tp_wins = tp_pp.parseLegend(win_size);
@@ -281,56 +318,80 @@ public class SetupDriver {
 		op_indv = op_pp.parsePhased(chr);
 		
 		//=======Import Environment Data========
-		gm = mp.parseGeneMap();
-		if(!anc_path.equals(".:MISSING:."))
+		genMap = mp.parseGeneMap();
+		if (!anc_path.equals(".:MISSING:.")){
 			anc_types = ap.parseAncestralTypes();
-		else
+		}
+		else {
 			anc_types = new ArrayList<Window>();
+		}
 	}
+*/
 	
 	private void runVcfParcers(int chr) throws Exception {
 		
 		//========Find Path Variables==========
-		String tp_vcf_path = getPhasedPath(data_dir, VCF_TYPE, chr, t_pop);
-		String xp_vcf_path = getPhasedPath(data_dir, VCF_TYPE, chr, x_pop);
-		String op_vcf_path = getPhasedPath(data_dir, VCF_TYPE, chr, o_pop);
+		String tp_vcf_path = t_pop_file.toString();//getPhasedPath(data_dir, VCF_TYPE, chr, t_pop);
+		String xp_vcf_path = x_pop_file.toString();//getPhasedPath(data_dir, VCF_TYPE, chr, x_pop);
+		String op_vcf_path = o_pop_file.toString();//getPhasedPath(data_dir, VCF_TYPE, chr, o_pop);
 		
-		String map_path = getMapPath(map_dir, chr);
+		String identifier = "chr" + chr + "_";
+			
+		if (tp_vcf_path.contains(identifier)) {
+			log.addLine("WARNING: Filename " + tp_vcf_path + " does not contain expected identifier " + identifier + 
+					". Ensure that files are correct for the given chromosome range.");	
+		}
+		
+		String map_path = map_file.toString();//getMapPath(map_dir, chr);
 		
 		//=====Run Parsers and Save Data=======
 		VcfParser tp_vp = new VcfParser(tp_vcf_path, chr, log);
-		tp_vp.parseVCF(win_size, true);
+		tp_vp.parseVCF(win_size, this.anc_data_loc.equals(this.target));
 		tp_wins = tp_vp.getWindows();
 		tp_indv = tp_vp.getIndividuals();
 		
 		VcfParser xp_vp = new VcfParser(xp_vcf_path, chr, log);
-		xp_vp.parseVCF(win_size, false);
+		xp_vp.parseVCF(win_size, this.anc_data_loc.equals(this.cross));
 		xp_wins = xp_vp.getWindows();
 		xp_indv = xp_vp.getIndividuals();
 		
 		VcfParser op_vp = new VcfParser(op_vcf_path, chr, log);
-		op_vp.parseVCF(win_size, false);
+		op_vp.parseVCF(win_size, this.anc_data_loc.equals(this.outgroup));
 		op_wins = op_vp.getWindows();
 		op_indv = op_vp.getIndividuals();
 		
 		MapParser mp = new MapParser(map_path, log);
 		
 		//=======Import Environment Data========
-		gm = mp.parseGeneMap();
-		anc_types = tp_vp.getAncestralTypes();
+		genMap = mp.parseGeneMap();
+		//TODO: Done, test it
+		if (this.anc_data_loc.equals(this.target)) {
+			anc_types = tp_vp.getAncestralTypes();
+		}
+		else if (this.anc_data_loc.equals(this.cross)) {
+			anc_types = xp_vp.getAncestralTypes();
+		}
+		else if (this.anc_data_loc.equals(this.outgroup)) {
+			anc_types = op_vp.getAncestralTypes();
+		}
+		//The ancestral data is required for statistical calculation
+		if (anc_types == null || anc_types.isEmpty()) {
+			throw new IllegalInputException(log, "ERROR: No ancestral data found in selected population file");
+		}
 	}
 	
+/*
 	private String getPhasedPath(File dir, String type, int chr, String pop) 
 			throws UnknownFileException {
 		
 		String chr_check = "chr" + chr;
 		
 		String[] all_files = dir.list();
-		for(int i = 0; i < all_files.length; i++) {
+		for (int i = 0; i < all_files.length; i++) {
 			
 			String file_name = all_files[i];
 			
-			if(file_name.contains(type)
+			if (file_name.contains(type)
 					&& file_name.contains(chr_check)
 					&& file_name.contains(pop)
 					&& file_name.charAt(0) != '.') {
@@ -347,68 +408,65 @@ public class SetupDriver {
 		String chr_check = "chr" + chr + "_";
 		
 		String[] all_files = dir.list();
-		for(int i = 0; i < all_files.length; i++) {
+		for (int i = 0; i < all_files.length; i++) {
 			
 			String file_name = all_files[i];
-			if(file_name.contains(LEGEND_TYPE) 
+			if (file_name.contains(LEGEND_TYPE) 
 					&& file_name.contains(chr_check)
 					&& file_name.charAt(0) != '.'
 					&& file_name.contains(ANCESTRAL_TYPE))
 				return dir.getAbsolutePath() + File.separator + file_name;
-			if(file_name.contains(EMF_TYPE) 
+			if (file_name.contains(EMF_TYPE) 
 					&& file_name.contains(chr_check)
 					&& file_name.charAt(0) != '.')
 				return dir.getAbsolutePath() + File.separator + file_name;
 		}
 		
 		return ".:MISSING:.";
-//		String msg = "the issue is with your ancestral data";
-//		throw new UnknownFileException(log, dir, msg);
 	}
 	
-	private String getMapPath(File dir, int chr) 
-			throws UnknownFileException {
+	private String getMapPath(File dir, int chr) throws UnknownFileException {
 		
 		String chr_check = "chr" + chr + "_";
 		
 		String[] all_files = dir.list();
 		
-		for(int i = 0; i < all_files.length; i++) {
+		for (int i = 0; i < all_files.length; i++) {
 			
 			String file_name = all_files[i];
-			if(file_name.contains(chr_check)
-					&& file_name.charAt(0) != '.')
+			if (file_name.contains(chr_check) && file_name.charAt(0) != '.') {
 				return dir.getAbsolutePath() + File.separator + file_name;
-		}
+			}
+		}e
 		
 		String msg = "the issue is with your map data";
 		throw new UnknownFileException(log, dir, msg);
 	}
-	
-	private boolean containsVCF(File dir) {
-		String[] all_files = dir.list();
+*/
+	private boolean typeVCF(String...all_files) {
 		
-		for(int i = 0; i < all_files.length; i++) {
-			if(all_files[i].contains(VCF_TYPE))
-				return true;
+		for (int i = 0; i < all_files.length; i++) {
+			if (!all_files[i].contains(VCF_TYPE)) {
+				return false;
+			}
 		}
 		
-		return false;
+		return true;
 	}
 	
     private void setArgs(HashMap<String, Object> args) throws IllegalInputException, IOException {
         
         log.add("\nParameter Check");
 
-        data_dir = (File) args.get("data_dir");
-        log.add(".");
+//        data_dir = (File) args.get("data_dir");
+//        log.add(".");
 
-        map_dir = (File) args.get("map_dir");
-        log.add(".");
+//        map_dir = (File) args.get("map_dir");
+//        log.add(".");
 
         File temp_wrk_dir = new File(args.get("working_dir") + File.separator + "SelecT_workspace" + File.separator);
         int n = 1;
-        while(temp_wrk_dir.exists()) {
+        while (temp_wrk_dir.exists()) {
                 temp_wrk_dir = new File(args.get("working_dir") + File.separator + "SelecT_workspace" + n + File.separator);
                 n++;
         }   
@@ -416,15 +474,33 @@ public class SetupDriver {
         wrk_dir = new File(temp_wrk_dir.getAbsolutePath() + File.separator + "envi_files" + File.separator);
         wrk_dir.mkdirs();
         log.add(".");
-
-        t_pop = (String)args.get("target_pop");
+        
+        t_pop = (String)args.get("target_pop_name");
         log.add(".");
 
-        x_pop = (String)args.get("cross_pop");
+        x_pop = (String)args.get("cross_pop_name");
         log.add(".");
 
-        o_pop = (String)args.get("out_pop");
+//        o_pop = (String)args.get("out_pop_name");
+//        log.add(".");
+        
+        this.anc_data_loc = (String)args.get("anc_data_loc");
         log.add(".");
+
+        t_pop_file = ((File)args.get("target_pop_file")).getAbsolutePath();
+        log.add(".");
+
+        x_pop_file = ((File)args.get("cross_pop_file")).getAbsolutePath();
+        log.add(".");
+
+        o_pop_file = ((File)args.get("out_pop_file")).getAbsolutePath();
+        log.add(".");
+        
+        map_file = ((File)args.get("map_file")).getAbsolutePath();
+        log.add(".");
+        
+//        s_name = (String)args.get("species");
+//        log.add(".");
 
         chr_st = (Integer) args.get("start_chr");
         log.add(".");
@@ -433,10 +509,13 @@ public class SetupDriver {
         log.add(".");
 
         win_size = getWindowSize( (Double) args.get("win_size") );
+        log.add(".");
+        
+        
+        log.add(".");
 
         log.addLine(" complete!");
         System.out.println("Paramater Check Complete!");
-        System.out.println("I'm praying your analysis works too...");
     }   
 
     private int getWindowSize(Double in) throws IllegalInputException {
@@ -448,7 +527,8 @@ public class SetupDriver {
 
                 in_size = (int) win_size_in;
 
-        } catch (NumberFormatException e) {
+        } 
+        catch (NumberFormatException e) {
                 String msg = "Error: Window size invalid format";
                 throw new IllegalInputException(log, msg);
         }   
