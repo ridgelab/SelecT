@@ -14,9 +14,8 @@ Table of Contents
   I. Introduction
  II. Installation Instructions
 III. Usage Instructions and Examples
- IV. License
-  V. Funding and Acknowledgements
- VI. Contact
+ IV. Funding and Acknowledgements
+  V. Contact
 
 
 
@@ -207,20 +206,14 @@ java -jar SignificanceAnalyzer.jar example/SelecT_workspace 21
 
 
 
-IV. License
------------
-Please see `LICENSE'.
-
-
-
-V. Funding and Acknowledgements
+IV. Funding and Acknowledgements
 -------------------------------
 Funding for the research and production of this software was provided by
 startup funds to Perry Ridge, Ph.D.
 
 
 
-VI. Contact
+V. Contact
 -----------
 For questions, comments, concerns, feature requests, suggestions, etc., please
 contact:
